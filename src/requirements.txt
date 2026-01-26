@@ -7,12 +7,13 @@ djangorestframework==3.14.0
 djangorestframework-simplejwt==5.3.1
 drf-yasg==1.21.7
 
+
 # Database
-psycopg2-binary
+psycopg2-binary==2.9.9
 dj-database-url==0.5.0
 
 # Authentication
-PyJWT
+PyJWT==2.9.0
 
 # HTTP & Networking
 certifi==2024.2.2
@@ -20,5 +21,7 @@ charset-normalizer==3.3.2
 idna==3.6
 requests==2.31.0
 urllib3==2.2.0
+
 python-dotenv==1.0.1
-Pillow
+Pillow==10.4.0
+
