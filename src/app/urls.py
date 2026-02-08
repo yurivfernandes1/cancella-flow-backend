@@ -20,11 +20,13 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.views.static import serve
+from .health import health
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/access/", include("access.api.urls")),
     path("api/cadastros/", include("cadastros.api.urls")),
+    path("api/health/", health),
 ]
 
 # Servir arquivos de mídia em desenvolvimento
