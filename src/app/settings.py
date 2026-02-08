@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 import os
 from pathlib import Path
+
 import dj_database_url
 from dotenv import load_dotenv
 
@@ -36,6 +37,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
+    "cancella-flow-backend.onrender.com",
 ]
 
 
@@ -177,6 +179,7 @@ CORS_ALLOW_ALL_ORIGINS = True  # Apenas para desenvolvimento
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "cancella-flow-backend.onrender.com",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -221,4 +224,5 @@ REST_FRAMEWORK = {
 }
 
 # Configurações do Django Filter
+FILTERS_DEFAULT_LOOKUP_EXPR = "icontains"
 FILTERS_DEFAULT_LOOKUP_EXPR = "icontains"
