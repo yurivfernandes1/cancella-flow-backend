@@ -37,9 +37,8 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    "https://cancella-flow-backend.onrender.com",
-    "http://cancella-flow-backend.onrender.com",
-    "https://cancellaflow.yurivf.com.br",
+    "cancella-flow-backend.onrender.com",
+    "cancellaflow.yurivf.com.br",
 ]
 
 
@@ -182,7 +181,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://cancella-flow-backend.onrender.com",
-    "http://cancella-flow-backend.onrender.com",
     "https://cancellaflow.yurivf.com.br",
 ]
 
