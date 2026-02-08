@@ -43,17 +43,25 @@ def criar_aviso_encomenda(encomenda, criador):
         data_fim = now + timezone.timedelta(
             days=30
         )  # Aviso válido por 30 dias
-
-        Aviso.objects.create(
+        # Evitar criar avisos duplicados caso a função seja chamada duas vezes
+        existing = Aviso.objects.filter(
             titulo=titulo,
-            descricao=descricao,
             grupo=grupo_moradores,
-            prioridade=Aviso.PRIORIDADE_MEDIA,
-            status=Aviso.STATUS_ATIVO,
-            data_inicio=now,
-            data_fim=data_fim,
             created_by=criador,
-        )
+            status=Aviso.STATUS_ATIVO,
+        ).exists()
+
+        if not existing:
+            Aviso.objects.create(
+                titulo=titulo,
+                descricao=descricao,
+                grupo=grupo_moradores,
+                prioridade=Aviso.PRIORIDADE_MEDIA,
+                status=Aviso.STATUS_ATIVO,
+                data_inicio=now,
+                data_fim=data_fim,
+                created_by=criador,
+            )
     except Exception as e:
         # Não deve interromper a criação da encomenda se falhar
         print(f"Erro ao criar aviso de encomenda: {str(e)}")

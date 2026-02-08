@@ -8,7 +8,11 @@ class VisitanteSerializer(serializers.ModelSerializer):
     morador_nome = serializers.CharField(
         source="morador.full_name", read_only=True
     )
-    morador_id = serializers.IntegerField(write_only=True)
+    morador_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(groups__name="Moradores"),
+        source="morador",
+        write_only=True,
+    )
     esta_no_condominio = serializers.BooleanField(read_only=True)
 
     class Meta:
@@ -44,26 +48,11 @@ class VisitanteSerializer(serializers.ModelSerializer):
             return placa
         return value
 
-    def validate_morador_id(self, value):
-        try:
-            morador = User.objects.get(id=value)
-            if not morador.groups.filter(name="Moradores").exists():
-                raise serializers.ValidationError(
-                    "O usuário selecionado não é um morador."
-                )
-            return value
-        except User.DoesNotExist:
-            raise serializers.ValidationError("Morador não encontrado.")
-
     def create(self, validated_data):
-        morador_id = validated_data.pop("morador_id")
-        validated_data["morador"] = User.objects.get(id=morador_id)
+        # `morador_id` é tratado pelo PrimaryKeyRelatedField e populado como `morador`
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        morador_id = validated_data.pop("morador_id", None)
-        if morador_id:
-            validated_data["morador"] = User.objects.get(id=morador_id)
         return super().update(instance, validated_data)
 
 
