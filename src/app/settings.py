@@ -38,6 +38,8 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "cancella-flow-backend.onrender.com",
+    "https://cancella-flow-backend.onrender.com",
+    "https://cancellaflow.yurivf.com.br",
 ]
 
 
@@ -180,6 +182,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "cancella-flow-backend.onrender.com",
+    "https://cancella-flow-backend.onrender.com/",
+    "https://cancellaflow.yurivf.com.br",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -224,5 +228,4 @@ REST_FRAMEWORK = {
 }
 
 # Configurações do Django Filter
-FILTERS_DEFAULT_LOOKUP_EXPR = "icontains"
 FILTERS_DEFAULT_LOOKUP_EXPR = "icontains"
