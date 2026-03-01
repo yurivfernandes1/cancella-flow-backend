@@ -3,6 +3,7 @@ from .condominio import Condominio
 from .encomenda import Encomenda
 from .espaco import Espaco, EspacoInventarioItem, EspacoReserva
 from .evento import Evento
+from .lista_convidados import ConvidadoLista, ListaConvidados
 from .unidade import Unidade
 from .veiculo import Veiculo
 from .visitante import Visitante

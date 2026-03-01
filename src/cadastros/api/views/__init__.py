@@ -53,6 +53,15 @@ from .evento_views import (
     evento_list_view,
     evento_update_view,
 )
+from .lista_convidados_views import (
+    adicionar_convidado_view,
+    atualizar_convidado_view,
+    buscar_cpf_simples_view,
+    buscar_cpf_view,
+    lista_convidados_detail_view,
+    listas_convidados_view,
+    remover_convidado_view,
+)
 from .unidade_views import (
     export_modelo_excel_view,
     import_excel_view,

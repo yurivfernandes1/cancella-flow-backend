@@ -270,4 +270,40 @@ urlpatterns = [
         views.evento_delete_view,
         name="evento-delete",
     ),
+    # URLs para Listas de Convidados
+    path(
+        "listas-convidados/",
+        views.listas_convidados_view,
+        name="listas-convidados",
+    ),
+    path(
+        "listas-convidados/<int:lista_pk>/",
+        views.lista_convidados_detail_view,
+        name="lista-convidados-detail",
+    ),
+    path(
+        "listas-convidados/<int:lista_pk>/buscar-cpf/",
+        views.buscar_cpf_view,
+        name="lista-convidados-buscar-cpf",
+    ),
+    path(
+        "listas-convidados/<int:lista_pk>/adicionar-convidado/",
+        views.adicionar_convidado_view,
+        name="lista-convidados-adicionar",
+    ),
+    path(
+        "listas-convidados/<int:lista_pk>/convidados/<int:convidado_pk>/delete/",
+        views.remover_convidado_view,
+        name="lista-convidados-remover",
+    ),
+    path(
+        "listas-convidados/<int:lista_pk>/convidados/<int:convidado_pk>/update/",
+        views.atualizar_convidado_view,
+        name="lista-convidados-atualizar-convidado",
+    ),
+    path(
+        "listas-convidados/buscar-cpf/",
+        views.buscar_cpf_simples_view,
+        name="lista-convidados-buscar-cpf-simples",
+    ),
 ]
