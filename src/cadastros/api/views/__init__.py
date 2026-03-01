@@ -49,6 +49,7 @@ from .evento_views import (
     evento_create_view,
     evento_delete_view,
     evento_detail_view,
+    evento_imagem_db_view,
     evento_list_view,
     evento_update_view,
 )
@@ -141,6 +142,7 @@ __all__ = [
     "evento_list_view",
     "evento_create_view",
     "evento_detail_view",
+    "evento_imagem_db_view",
     "evento_update_view",
     "evento_delete_view",
 ]

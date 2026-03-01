@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 
 from ...models import Espaco, Evento
@@ -9,7 +10,9 @@ class EventoSerializer(serializers.ModelSerializer):
         write_only=True, required=False, allow_null=True
     )
     # Compatibilidade: aceitar envio como "espaco" (id) ou "espaco_id"
-    espaco = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    espaco = serializers.IntegerField(
+        write_only=True, required=False, allow_null=True
+    )
     local_completo = serializers.CharField(read_only=True)
     imagem_url = serializers.SerializerMethodField()
 
@@ -40,7 +43,6 @@ class EventoSerializer(serializers.ModelSerializer):
             "data_evento",
             "hora_inicio",
             "hora_fim",
-            "imagem",
             "imagem_url",
             "created_by",
             "updated_by",
@@ -97,11 +99,22 @@ class EventoSerializer(serializers.ModelSerializer):
         try:
             return int(raw_espaco_id)
         except (TypeError, ValueError):
-            raise serializers.ValidationError({"espaco": "ID do espaço inválido."})
+            raise serializers.ValidationError(
+                {"espaco": "ID do espaço inválido."}
+            )
+
+    def validate_datetime_inicio(self, value):
+        if value and value < timezone.now():
+            raise serializers.ValidationError(
+                "A data de início não pode ser no passado."
+            )
+        return value
 
     def validate(self, data):
         espaco_id = self._get_espaco_id_from_payload()
-        local_texto = self.initial_data.get("local_texto") or data.get("local_texto")
+        local_texto = self.initial_data.get("local_texto") or data.get(
+            "local_texto"
+        )
 
         # Garantir que um dos dois seja informado
         if not espaco_id and not local_texto:
@@ -118,15 +131,18 @@ class EventoSerializer(serializers.ModelSerializer):
                         {"espaco": "O espaço selecionado está inativo."}
                     )
                 data["espaco"] = espaco
+                # Limpar local_texto ao trocar para espaço cadastrado
+                data["local_texto"] = None
             except Espaco.DoesNotExist:
-                raise serializers.ValidationError({"espaco": "Espaço não encontrado."})
+                raise serializers.ValidationError(
+                    {"espaco": "Espaço não encontrado."}
+                )
         else:
             # Quando não há espaço, garantir espaco=None no validated_data
             data["espaco"] = None
-
-        # Normalizar local_texto
-        if local_texto is not None:
-            data["local_texto"] = local_texto
+            # Normalizar local_texto
+            if local_texto is not None:
+                data["local_texto"] = local_texto
 
         ini = data.get("datetime_inicio")
         fim = data.get("datetime_fim")

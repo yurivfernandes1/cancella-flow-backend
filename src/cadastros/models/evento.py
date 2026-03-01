@@ -42,7 +42,25 @@ class Evento(models.Model):
         null=True,
         blank=True,
         verbose_name="Imagem",
-        help_text="Imagem ilustrativa do evento",
+        help_text="Imagem ilustrativa do evento (legado — prefer imagem_db)",
+    )
+    # Armazenamento da imagem como BLOB no banco (mesma abordagem do condomínio)
+    imagem_db_data = models.BinaryField(
+        null=True,
+        blank=True,
+        help_text="Dados binários da imagem armazenados no banco",
+    )
+    imagem_db_content_type = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="Content-Type do arquivo de imagem",
+    )
+    imagem_db_filename = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Nome original do arquivo de imagem",
     )
 
     # Controle/auditoria

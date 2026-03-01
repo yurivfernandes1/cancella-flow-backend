@@ -1,6 +1,7 @@
 from access.api.permissions import IsStaffOrSindico
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -12,6 +13,22 @@ from ..serializers.evento_serializer import (
     EventoListSerializer,
     EventoSerializer,
 )
+
+
+def _salvar_imagem_db(evento, request):
+    """Salva o arquivo 'imagem' de request.FILES como BLOB no modelo."""
+    arquivo = request.FILES.get("imagem")
+    if arquivo:
+        evento.imagem_db_data = arquivo.read()
+        evento.imagem_db_content_type = arquivo.content_type
+        evento.imagem_db_filename = arquivo.name
+        evento.save(
+            update_fields=[
+                "imagem_db_data",
+                "imagem_db_content_type",
+                "imagem_db_filename",
+            ]
+        )
 
 
 @api_view(["GET"])
@@ -115,6 +132,7 @@ def evento_create_view(request):
         )
         if serializer.is_valid():
             evento = serializer.save(created_by=request.user)
+            _salvar_imagem_db(evento, request)
             return Response(
                 EventoSerializer(evento, context={"request": request}).data,
                 status=status.HTTP_201_CREATED,
@@ -194,6 +212,7 @@ def evento_update_view(request, pk):
 
         if serializer.is_valid():
             evento = serializer.save(updated_by=request.user)
+            _salvar_imagem_db(evento, request)
             return Response(
                 EventoSerializer(evento, context={"request": request}).data
             )
@@ -248,5 +267,33 @@ def evento_delete_view(request, pk):
     except Exception as e:
         return Response(
             {"error": f"Erro ao excluir evento: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def evento_imagem_db_view(request, pk):
+    """Serve a imagem do evento armazenada como BLOB no banco."""
+    try:
+        evento = Evento.objects.get(pk=pk)
+        if not evento.imagem_db_data:
+            return Response(
+                {"error": "Imagem não encontrada no banco."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return HttpResponse(
+            evento.imagem_db_data,
+            content_type=evento.imagem_db_content_type
+            or "application/octet-stream",
+        )
+    except Evento.DoesNotExist:
+        return Response(
+            {"error": "Evento não encontrado."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except Exception as e:
+        return Response(
+            {"error": f"Erro ao servir imagem: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )

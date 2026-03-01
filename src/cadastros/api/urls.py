@@ -246,6 +246,11 @@ urlpatterns = [
     path("eventos/create/", views.evento_create_view, name="evento-create"),
     path("eventos/<int:pk>/", views.evento_detail_view, name="evento-detail"),
     path(
+        "eventos/<int:pk>/imagem-db/",
+        views.evento_imagem_db_view,
+        name="evento-imagem-db",
+    ),
+    path(
         "eventos/<int:pk>/update/",
         views.evento_update_view,
         name="evento-update",
