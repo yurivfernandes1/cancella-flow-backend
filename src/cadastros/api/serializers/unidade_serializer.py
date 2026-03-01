@@ -45,6 +45,7 @@ class UnidadeSerializer(serializers.ModelSerializer):
 class UnidadeListSerializer(serializers.ModelSerializer):
     morador_nome = serializers.SerializerMethodField(read_only=True)
     identificacao_completa = serializers.CharField(read_only=True)
+    moradores = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Unidade
@@ -54,6 +55,7 @@ class UnidadeListSerializer(serializers.ModelSerializer):
             "bloco",
             "morador_nome",
             "identificacao_completa",
+            "moradores",
             "is_active",
             "created_on",
             "updated_on",
@@ -62,7 +64,6 @@ class UnidadeListSerializer(serializers.ModelSerializer):
     def get_morador_nome(self, obj):
         """Retorna o nome do morador associado à unidade via related_name"""
         try:
-            # 'morador' é a relação reversa de User.unidade (RelatedManager)
             if hasattr(obj, "morador") and obj.morador is not None:
                 first = obj.morador.all().first()
                 if first:
@@ -70,6 +71,30 @@ class UnidadeListSerializer(serializers.ModelSerializer):
         except Exception:
             pass
         return None
+
+    def get_moradores(self, obj):
+        """Retorna lista de moradores vinculados à unidade com dados relevantes"""
+        try:
+            if not (hasattr(obj, "morador") and obj.morador is not None):
+                return []
+            return [
+                {
+                    "id": m.id,
+                    "full_name": m.full_name
+                    or f"{m.first_name} {m.last_name}".strip()
+                    or m.username,
+                    "cpf": m.cpf or "",
+                    "username": m.username,
+                    "email": m.email or "",
+                    "phone": m.phone or "",
+                    "is_active": m.is_active,
+                    "unidade_id": obj.id,
+                    "unidade_identificacao": obj.identificacao_completa,
+                }
+                for m in obj.morador.all()
+            ]
+        except Exception:
+            return []
 
 
 class UnidadeCreateBulkSerializer(serializers.Serializer):
