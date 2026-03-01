@@ -54,6 +54,8 @@ from .evento_views import (
     evento_update_view,
 )
 from .unidade_views import (
+    export_modelo_excel_view,
+    import_excel_view,
     unidade_create_bulk_view,
     unidade_create_view,
     unidade_delete_view,
@@ -119,6 +121,8 @@ __all__ = [
     "unidade_update_view",
     "unidade_inactivate_view",
     "unidade_delete_view",
+    "export_modelo_excel_view",
+    "import_excel_view",
     "veiculo_list_view",
     "veiculo_create_view",
     "veiculo_detail_view",

@@ -79,6 +79,16 @@ urlpatterns = [
         name="unidade-create-bulk",
     ),
     path(
+        "unidades/export-modelo/",
+        views.export_modelo_excel_view,
+        name="unidade-export-modelo",
+    ),
+    path(
+        "unidades/import-excel/",
+        views.import_excel_view,
+        name="unidade-import-excel",
+    ),
+    path(
         "unidades/<int:pk>/", views.unidade_detail_view, name="unidade-detail"
     ),
     path(
