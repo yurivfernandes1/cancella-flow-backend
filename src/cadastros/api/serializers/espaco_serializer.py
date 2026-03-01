@@ -7,6 +7,12 @@ User = get_user_model()
 
 
 class EspacoSerializer(serializers.ModelSerializer):
+    inventario_itens = serializers.SerializerMethodField()
+
+    def get_inventario_itens(self, obj):
+        itens = obj.inventario_itens.all()
+        return EspacoInventarioItemListSerializer(itens, many=True).data
+
     class Meta:
         model = Espaco
         fields = [
@@ -19,6 +25,7 @@ class EspacoSerializer(serializers.ModelSerializer):
             "updated_on",
             "created_by",
             "updated_by",
+            "inventario_itens",
         ]
         read_only_fields = [
             "id",
@@ -26,6 +33,7 @@ class EspacoSerializer(serializers.ModelSerializer):
             "updated_on",
             "created_by",
             "updated_by",
+            "inventario_itens",
         ]
 
 
