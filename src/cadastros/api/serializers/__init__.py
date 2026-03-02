@@ -16,6 +16,11 @@ from .espaco_serializer import (
     EspacoReservaSerializer,
     EspacoSerializer,
 )
+from .ocorrencia_serializer import (
+    OcorrenciaCreateSerializer,
+    OcorrenciaRespostaSerializer,
+    OcorrenciaSerializer,
+)
 from .unidade_serializer import (
     UnidadeCreateBulkSerializer,
     UnidadeListSerializer,
@@ -23,6 +28,32 @@ from .unidade_serializer import (
 )
 from .veiculo_serializer import VeiculoListSerializer, VeiculoSerializer
 from .visitante_serializer import VisitanteListSerializer, VisitanteSerializer
+
+__all__ = [
+    "CondominioSerializer",
+    "CondominioListSerializer",
+    "EncomendaSerializer",
+    "EncomendaListSerializer",
+    "EspacoSerializer",
+    "EspacoListSerializer",
+    "EspacoInventarioItemSerializer",
+    "EspacoInventarioItemListSerializer",
+    "EspacoReservaSerializer",
+    "EspacoReservaListSerializer",
+    "OcorrenciaSerializer",
+    "OcorrenciaCreateSerializer",
+    "OcorrenciaRespostaSerializer",
+    "UnidadeSerializer",
+    "UnidadeListSerializer",
+    "UnidadeCreateBulkSerializer",
+    "VeiculoSerializer",
+    "VeiculoListSerializer",
+    "VisitanteSerializer",
+    "VisitanteListSerializer",
+    "AvisoSerializer",
+    "AvisoListSerializer",
+    "AvisoOptionsSerializer",
+]
 
 __all__ = [
     "CondominioSerializer",

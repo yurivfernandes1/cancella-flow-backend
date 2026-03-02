@@ -62,6 +62,13 @@ from .lista_convidados_views import (
     listas_convidados_view,
     remover_convidado_view,
 )
+from .ocorrencia_views import (
+    ocorrencia_create_view,
+    ocorrencia_delete_view,
+    ocorrencia_detail_view,
+    ocorrencia_list_view,
+    ocorrencia_update_view,
+)
 from .unidade_views import (
     export_modelo_excel_view,
     import_excel_view,

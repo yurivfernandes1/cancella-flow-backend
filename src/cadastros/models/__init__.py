@@ -4,6 +4,7 @@ from .encomenda import Encomenda
 from .espaco import Espaco, EspacoInventarioItem, EspacoReserva
 from .evento import Evento
 from .lista_convidados import ConvidadoLista, ListaConvidados
+from .ocorrencia import Ocorrencia
 from .unidade import Unidade
 from .veiculo import Veiculo
 from .visitante import Visitante
@@ -19,4 +20,5 @@ __all__ = [
     "EspacoInventarioItem",
     "EspacoReserva",
     "Evento",
+    "Ocorrencia",
 ]

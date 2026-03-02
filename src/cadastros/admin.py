@@ -3,6 +3,7 @@ from django.contrib import admin
 from .models.aviso import Aviso
 from .models.condominio import Condominio
 from .models.encomenda import Encomenda
+from .models.ocorrencia import Ocorrencia
 from .models.unidade import Unidade
 from .models.visitante import Visitante
 
@@ -79,3 +80,18 @@ class AvisoAdmin(admin.ModelAdmin):
     )
     list_filter = ("grupo", "prioridade", "status")
     search_fields = ("titulo", "descricao", "grupo__name")
+
+
+@admin.register(Ocorrencia)
+class OcorrenciaAdmin(admin.ModelAdmin):
+    list_display = (
+        "titulo",
+        "tipo",
+        "status",
+        "criado_por",
+        "respondido_por",
+        "created_at",
+    )
+    list_filter = ("tipo", "status", "created_at")
+    search_fields = ("titulo", "descricao", "criado_por__full_name")
+    readonly_fields = ("created_at", "updated_at", "respondido_em")

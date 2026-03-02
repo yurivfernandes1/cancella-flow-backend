@@ -9,7 +9,14 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from ...models import Aviso, Encomenda, EspacoReserva, Evento, Visitante
+from ...models import (
+    Aviso,
+    Encomenda,
+    EspacoReserva,
+    Evento,
+    Ocorrencia,
+    Visitante,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -284,6 +291,16 @@ def sindico_stats_view(request):
         # 7. PENDÊNCIAS (por ora, sempre 0 conforme solicitado)
         pendencias = 0
 
+        # 8. OCORRÊNCIAS PENDENTES (abertas)
+        try:
+            ocorrencias_pendentes = Ocorrencia.objects.filter(
+                status=Ocorrencia.STATUS_ABERTA,
+                criado_por__condominio_id=condominio_id,
+            ).count()
+        except Exception:
+            logger.exception("Erro ao calcular ocorrências pendentes")
+            ocorrencias_pendentes = 0
+
         return Response(
             {
                 "moradores": {
@@ -302,6 +319,7 @@ def sindico_stats_view(request):
                 "reservas_proximas": {"total": reservas_proximas},
                 "eventos_proximos": {"total": eventos_proximos},
                 "pendencias": {"total": pendencias},
+                "ocorrencias_pendentes": {"total": ocorrencias_pendentes},
             }
         )
 

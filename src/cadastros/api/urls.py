@@ -175,6 +175,28 @@ urlpatterns = [
         views.sindico_stats_view,
         name="sindico-stats",
     ),
+    # URLs para Ocorrências
+    path("ocorrencias/", views.ocorrencia_list_view, name="ocorrencia-list"),
+    path(
+        "ocorrencias/create/",
+        views.ocorrencia_create_view,
+        name="ocorrencia-create",
+    ),
+    path(
+        "ocorrencias/<int:pk>/",
+        views.ocorrencia_detail_view,
+        name="ocorrencia-detail",
+    ),
+    path(
+        "ocorrencias/<int:pk>/update/",
+        views.ocorrencia_update_view,
+        name="ocorrencia-update",
+    ),
+    path(
+        "ocorrencias/<int:pk>/delete/",
+        views.ocorrencia_delete_view,
+        name="ocorrencia-delete",
+    ),
     # URLs para Espaços
     path("espacos/", views.espaco_list_view, name="espaco-list"),
     path("espacos/create/", views.espaco_create_view, name="espaco-create"),
