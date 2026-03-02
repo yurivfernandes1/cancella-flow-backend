@@ -58,6 +58,10 @@ def listas_convidados_view(request):
         if search:
             qs = qs.filter(titulo__icontains=search)
 
+        data_evento = request.query_params.get("data_evento", "").strip()
+        if data_evento:
+            qs = qs.filter(data_evento=data_evento)
+
         serializer = ListaConvidadosSerializer(qs, many=True)
         return Response(serializer.data)
 
