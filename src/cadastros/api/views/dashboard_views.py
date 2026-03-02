@@ -11,10 +11,12 @@ from rest_framework.response import Response
 
 from ...models import (
     Aviso,
+    Condominio,
     Encomenda,
     EspacoReserva,
     Evento,
     Ocorrencia,
+    Unidade,
     Visitante,
 )
 
@@ -281,8 +283,8 @@ def sindico_stats_view(request):
             eventos_proximos = Evento.objects.filter(
                 created_by__isnull=False,
                 created_by__condominio_id=condominio_id,
-                data_evento__gte=hoje_date,
-                data_evento__lte=proximos_7_dias,
+                datetime_inicio__date__gte=hoje_date,
+                datetime_inicio__date__lte=proximos_7_dias,
             ).count()
         except Exception:
             logger.exception("Erro ao calcular eventos próximos")
@@ -320,6 +322,191 @@ def sindico_stats_view(request):
                 "eventos_proximos": {"total": eventos_proximos},
                 "pendencias": {"total": pendencias},
                 "ocorrencias_pendentes": {"total": ocorrencias_pendentes},
+            }
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": f"Erro ao buscar estatísticas: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def portaria_stats_view(request):
+    """
+    Retorna estatísticas do dashboard da portaria:
+    - Visitantes presentes no condomínio agora
+    - Encomendas pendentes
+    - Reservas de espaços hoje
+    - Eventos acontecendo hoje
+    """
+    try:
+        user = request.user
+        is_portaria = user.groups.filter(name="Portaria").exists()
+
+        if not is_portaria and not user.is_staff:
+            return Response(
+                {"error": "Acesso permitido apenas para portaria."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        condominio_id = getattr(user, "condominio_id", None)
+        if not condominio_id and not user.is_staff:
+            return Response(
+                {"error": "Porteiro não está associado a um condomínio."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        hoje = timezone.now().date()
+
+        # 1. VISITANTES DENTRO DO CONDOMÍNIO AGORA
+        try:
+            visitantes_dentro = Visitante.objects.filter(
+                morador__condominio_id=condominio_id,
+                data_saida__isnull=True,
+                data_entrada__date=hoje,
+            ).count()
+        except Exception:
+            logger.exception("Erro ao calcular visitantes dentro do condomínio")
+            visitantes_dentro = 0
+
+        # 2. ENCOMENDAS PENDENTES (não retiradas)
+        try:
+            encomendas_pendentes = Encomenda.objects.filter(
+                created_by__condominio_id=condominio_id,
+                retirado_em__isnull=True,
+            ).count()
+        except Exception:
+            logger.exception("Erro ao calcular encomendas pendentes da portaria")
+            encomendas_pendentes = 0
+
+        # 3. RESERVAS CONFIRMADAS HOJE
+        try:
+            reservas_hoje = EspacoReserva.objects.filter(
+                morador__condominio_id=condominio_id,
+                data_reserva=hoje,
+                status="confirmada",
+            ).count()
+        except Exception:
+            logger.exception("Erro ao calcular reservas de hoje")
+            reservas_hoje = 0
+
+        # 4. EVENTOS HOJE
+        try:
+            eventos_hoje = Evento.objects.filter(
+                created_by__condominio_id=condominio_id,
+                datetime_inicio__date=hoje,
+            ).count()
+        except Exception:
+            logger.exception("Erro ao calcular eventos de hoje")
+            eventos_hoje = 0
+
+        return Response(
+            {
+                "visitantes_dentro": {"total": visitantes_dentro},
+                "encomendas_pendentes": {"total": encomendas_pendentes},
+                "reservas_hoje": {"total": reservas_hoje},
+                "eventos_hoje": {"total": eventos_hoje},
+            }
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": f"Erro ao buscar estatísticas: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_stats_view(request):
+    """
+    Retorna estatísticas do dashboard administrativo (is_staff):
+    - Total de condomínios ativos
+    - Total de usuários ativos e pendentes
+    - Totais por grupo (síndicos, moradores, porteiros)
+    - Detalhes por condomínio (moradores e unidades)
+    """
+    try:
+        user = request.user
+
+        if not user.is_staff:
+            return Response(
+                {"error": "Acesso permitido apenas para administradores."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # 1. TOTAL DE CONDOMÍNIOS ATIVOS
+        try:
+            total_condominios = Condominio.objects.filter(is_ativo=True).count()
+        except Exception:
+            logger.exception("Erro ao contar condomínios")
+            total_condominios = 0
+
+        # 2. USUÁRIOS ATIVOS E PENDENTES
+        try:
+            total_usuarios = User.objects.filter(is_active=True).count()
+            usuarios_pendentes = User.objects.filter(is_active=False).count()
+        except Exception:
+            logger.exception("Erro ao contar usuários")
+            total_usuarios = 0
+            usuarios_pendentes = 0
+
+        # 3. TOTAIS POR GRUPO
+        try:
+            total_sindicos = User.objects.filter(
+                groups__name="Síndicos"
+            ).count()
+            total_moradores = User.objects.filter(
+                groups__name="Moradores"
+            ).count()
+            total_porteiros = User.objects.filter(
+                groups__name="Portaria"
+            ).count()
+        except Exception:
+            logger.exception("Erro ao contar usuários por grupo")
+            total_sindicos = 0
+            total_moradores = 0
+            total_porteiros = 0
+
+        # 4. DETALHES POR CONDOMÍNIO
+        try:
+            condominios = Condominio.objects.filter(is_ativo=True).order_by(
+                "nome"
+            )
+            condominios_detalhes = []
+            for c in condominios:
+                moradores_c = User.objects.filter(
+                    condominio=c, groups__name="Moradores"
+                ).count()
+                unidades_c = (
+                    Unidade.objects.filter(morador__condominio=c)
+                    .distinct()
+                    .count()
+                )
+                condominios_detalhes.append(
+                    {
+                        "id": c.id,
+                        "nome": c.nome,
+                        "total_moradores": moradores_c,
+                        "total_unidades": unidades_c,
+                    }
+                )
+        except Exception:
+            logger.exception("Erro ao montar detalhes dos condomínios")
+            condominios_detalhes = []
+
+        return Response(
+            {
+                "total_condominios": total_condominios,
+                "total_usuarios": total_usuarios,
+                "usuarios_pendentes": usuarios_pendentes,
+                "total_sindicos": total_sindicos,
+                "total_moradores": total_moradores,
+                "total_porteiros": total_porteiros,
+                "condominios_detalhes": condominios_detalhes,
             }
         )
 

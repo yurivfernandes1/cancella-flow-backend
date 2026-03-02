@@ -175,6 +175,16 @@ urlpatterns = [
         views.sindico_stats_view,
         name="sindico-stats",
     ),
+    path(
+        "dashboard/portaria-stats/",
+        views.portaria_stats_view,
+        name="portaria-stats",
+    ),
+    path(
+        "dashboard/admin-stats/",
+        views.admin_stats_view,
+        name="admin-stats",
+    ),
     # URLs para Ocorrências
     path("ocorrencias/", views.ocorrencia_list_view, name="ocorrencia-list"),
     path(
