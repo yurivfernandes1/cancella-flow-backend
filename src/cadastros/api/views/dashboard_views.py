@@ -369,7 +369,9 @@ def portaria_stats_view(request):
                 data_entrada__date=hoje,
             ).count()
         except Exception:
-            logger.exception("Erro ao calcular visitantes dentro do condomínio")
+            logger.exception(
+                "Erro ao calcular visitantes dentro do condomínio"
+            )
             visitantes_dentro = 0
 
         # 2. ENCOMENDAS PENDENTES (não retiradas)
@@ -379,7 +381,9 @@ def portaria_stats_view(request):
                 retirado_em__isnull=True,
             ).count()
         except Exception:
-            logger.exception("Erro ao calcular encomendas pendentes da portaria")
+            logger.exception(
+                "Erro ao calcular encomendas pendentes da portaria"
+            )
             encomendas_pendentes = 0
 
         # 3. RESERVAS CONFIRMADAS HOJE
@@ -440,7 +444,9 @@ def admin_stats_view(request):
 
         # 1. TOTAL DE CONDOMÍNIOS ATIVOS
         try:
-            total_condominios = Condominio.objects.filter(is_ativo=True).count()
+            total_condominios = Condominio.objects.filter(
+                is_ativo=True
+            ).count()
         except Exception:
             logger.exception("Erro ao contar condomínios")
             total_condominios = 0

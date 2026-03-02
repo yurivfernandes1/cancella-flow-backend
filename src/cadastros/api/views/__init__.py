@@ -17,7 +17,12 @@ from .condominio_views import (
     condominio_update_view,
     condominio_upload_logo_db_view,
 )
-from .dashboard_views import admin_stats_view, morador_stats_view, portaria_stats_view, sindico_stats_view
+from .dashboard_views import (
+    admin_stats_view,
+    morador_stats_view,
+    portaria_stats_view,
+    sindico_stats_view,
+)
 from .encomenda_views import (
     encomenda_badge_view,
     encomenda_create_view,
