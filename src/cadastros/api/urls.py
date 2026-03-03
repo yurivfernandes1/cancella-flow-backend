@@ -2,8 +2,6 @@ from django.urls import path
 
 from . import views
 
-app_name = "cadastros"
-
 urlpatterns = [
     # URLs para Condomínios
     path("condominios/", views.condominio_list_view, name="condominio-list"),

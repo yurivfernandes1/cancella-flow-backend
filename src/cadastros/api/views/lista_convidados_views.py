@@ -54,10 +54,14 @@ def _enviar_qrcode_email(convidado, lista):
                 if cep_only:
                     try:
                         via_url = f"https://viacep.com.br/ws/{cep_only}/json/"
-                        with urllib.request.urlopen(
-                            via_url, timeout=5
-                        ) as resp:
+                        req = urllib.request.Request(
+                            via_url, headers={"User-Agent": "CancellaFlow/1.0"}
+                        )
+                        with urllib.request.urlopen(req, timeout=5) as resp:
                             data = json.load(resp)
+                        # Se ViaCEP indicar erro, não usar
+                        if data.get("erro"):
+                            raise ValueError("CEP não encontrado no ViaCEP")
                         # data pode conter: logradouro, bairro, localidade, uf
                         log = data.get("logradouro") or ""
                         bairro = data.get("bairro") or ""
@@ -166,7 +170,9 @@ def _enviar_qrcode_email(convidado, lista):
     <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px 20px;text-align:center;">
       <p style="color:#15803d;font-weight:600;font-size:1rem;margin:0 0 8px;">QR Code de Acesso</p>
       <p style="color:#166534;font-size:0.88rem;margin:0 0 12px;">Apresente-o na portaria para confirmar sua entrada.</p>
-    <img src="cid:qrcode" alt="QR Code de Acesso" style="width:200px;height:200px;border-radius:8px;" />
+        <div style="display:flex;justify-content:center;align-items:center;">
+            <img src="cid:qrcode" alt="QR Code de Acesso" style="width:200px;height:200px;border-radius:8px;" />
+        </div>
     </div>
     <p style="color:#9ca3af;font-size:0.75rem;text-align:center;margin:16px 0 0;">Este QR code é pessoal e intransferível.</p>
   </div>
@@ -184,12 +190,13 @@ def _enviar_qrcode_email(convidado, lista):
             "attachments": [
                 {
                     "filename": "qrcode.png",
-                    "content": qr_bytes_list,
+                    "content": base64.b64encode(qr_bytes).decode(),
                     "content_id": "qrcode",
                     "disposition": "inline",
                 }
             ],
         }
+
         # se houver logo como FileField, enviar também como anexo inline com content_id=logo
         try:
             if condominio and getattr(condominio, "logo", None):
@@ -203,7 +210,7 @@ def _enviar_qrcode_email(convidado, lista):
                             "filename": getattr(
                                 logo_field, "name", "logo.png"
                             ),
-                            "content": list(logo_bytes),
+                            "content": base64.b64encode(logo_bytes).decode(),
                             "content_id": "logo",
                             "disposition": "inline",
                         }
