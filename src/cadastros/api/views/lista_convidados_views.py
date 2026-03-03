@@ -24,6 +24,7 @@ def _enviar_qrcode_email(convidado, lista):
     Silencioso em caso de erro — não bloqueia o fluxo principal.
     Retorna True se enviado com sucesso.
     """
+    import base64
     import io
 
     import qrcode
@@ -44,23 +45,78 @@ def _enviar_qrcode_email(convidado, lista):
         condominio_nome = condominio.nome if condominio else "Condomínio"
         condominio_endereco = ""
         if condominio:
-            partes = []
-            if condominio.cep:
-                partes.append(f"CEP {condominio.cep}")
-            if condominio.numero:
-                partes.append(f"n° {condominio.numero}")
-            if condominio.complemento:
-                partes.append(condominio.complemento)
-            condominio_endereco = ", ".join(partes) if partes else ""
+            # Se tivermos apenas o CEP armazenado, consultar ViaCEP para obter o
+            # endereço completo e montar uma descrição amigável.
+            cep_raw = (condominio.cep or "").strip()
+            endereco_parts = []
+            if cep_raw:
+                cep_only = "".join(c for c in cep_raw if c.isdigit())
+                if cep_only:
+                    try:
+                        via_url = f"https://viacep.com.br/ws/{cep_only}/json/"
+                        with urllib.request.urlopen(
+                            via_url, timeout=5
+                        ) as resp:
+                            data = json.load(resp)
+                        # data pode conter: logradouro, bairro, localidade, uf
+                        log = data.get("logradouro") or ""
+                        bairro = data.get("bairro") or ""
+                        cidade = data.get("localidade") or ""
+                        uf = data.get("uf") or ""
+                        if log:
+                            endereco_parts.append(log)
+                        if bairro:
+                            endereco_parts.append(bairro)
+                        if cidade or uf:
+                            cidade_uf = ", ".join(p for p in [cidade, uf] if p)
+                            endereco_parts.append(cidade_uf)
+                        # manter o CEP por último
+                        endereco_parts.append(f"CEP {cep_raw}")
+                    except Exception:
+                        # Se a consulta falhar, fallback para os dados básicos
+                        endereco_parts = []
+                        if condominio.cep:
+                            endereco_parts.append(f"CEP {condominio.cep}")
+            # adicionar número e complemento se existirem — colocados após o logradouro
+            numero_comp = []
+            if getattr(condominio, "numero", None):
+                numero_comp.append(f"n° {condominio.numero}")
+            if getattr(condominio, "complemento", None):
+                numero_comp.append(condominio.complemento)
+            if numero_comp:
+                endereco_parts.extend(numero_comp)
+
+            condominio_endereco = (
+                ", ".join(endereco_parts) if endereco_parts else ""
+            )
 
         local_descricao = ListaConvidadosSerializer().get_local_descricao(
             lista
         )
 
+        # Gerar QR code em memória: manter bytes e também base64 para fallback
         img = qrcode.make(str(convidado.qr_token))
         buffer = io.BytesIO()
         img.save(buffer, format="PNG")
-        qr_bytes = list(buffer.getvalue())
+        qr_bytes = buffer.getvalue()
+        qr_bytes_list = list(qr_bytes)
+        qr_base64 = base64.b64encode(qr_bytes).decode()
+
+        # Tentar obter logo do condomínio (FileField) e converter para base64
+        logo_html = ""
+        try:
+            if condominio and getattr(condominio, "logo", None):
+                logo_field = condominio.logo
+                try:
+                    logo_field.open("rb")
+                    logo_bytes = logo_field.read()
+                    logo_field.close()
+                    logo_b64 = base64.b64encode(logo_bytes).decode()
+                    logo_html = f'<img src="data:image/png;base64,{logo_b64}" alt="{condominio_nome}" style="max-width:150px; max-height:80px;margin-top:8px;" />'
+                except Exception:
+                    logo_html = ""
+        except Exception:
+            logo_html = ""
 
         morador_nome = (
             getattr(morador, "full_name", None)
@@ -80,18 +136,23 @@ def _enviar_qrcode_email(convidado, lista):
                 f'<td style="padding:8px 12px;color:#111827;font-weight:500;">{local_descricao}</td></tr>'
             )
 
-        endereco_footer = ""
+        endereco_row = ""
         if condominio_endereco:
-            endereco_footer = f'<p style="color:#9ca3af;font-size:0.72rem;margin:2px 0 0;">{condominio_endereco}</p>'
+            endereco_row = (
+                "<tr>"
+                '<td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:120px;">Endereço</td>'
+                f'<td style="padding:8px 12px;color:#111827;font-weight:500;">{condominio_endereco}</td></tr>'
+            )
 
         html_body = f"""<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
   <div style="background:#19294a;padding:20px 24px;text-align:center;">
     <p style="color:#ffffff;margin:0;font-size:1rem;font-weight:600;">{condominio_nome}</p>
+    {logo_html}
   </div>
   <div style="padding:24px;background:#ffffff;">
-    <h2 style="color:#19294a;margin:0 0 12px;font-size:1.1rem;">Ol&#225;, {convidado.nome}!</h2>
+    <h2 style="color:#19294a;margin:0 0 12px;font-size:1.1rem;">Olá, {convidado.nome}!</h2>
     <p style="color:#374151;line-height:1.6;margin:0 0 16px;">
-      Voc&#234; foi convidado(a) por <strong>{morador_nome}</strong> para:<br/>
+      Você foi convidado(a) por <strong>{morador_nome}</strong> para:<br/>
       <strong style="font-size:1.05rem;color:#2abb98;">{lista.titulo}</strong>
     </p>
     <table style="width:100%;border-collapse:collapse;margin:0 0 20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
@@ -100,39 +161,59 @@ def _enviar_qrcode_email(convidado, lista):
         <td style="padding:8px 12px;color:#111827;font-weight:500;">{data_evento_str}</td>
       </tr>
       {local_row}
+      {endereco_row}
     </table>
     <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px 20px;text-align:center;">
-      <p style="color:#15803d;font-weight:600;font-size:1rem;margin:0 0 8px;">QR Code de Acesso em Anexo &#128206;</p>
-      <p style="color:#166534;font-size:0.88rem;margin:0;">
-        O arquivo <strong>qrcode.png</strong> est&#225; em anexo neste e-mail.<br/>
-        Apresente-o na portaria para confirmar sua entrada.
-      </p>
+      <p style="color:#15803d;font-weight:600;font-size:1rem;margin:0 0 8px;">QR Code de Acesso</p>
+      <p style="color:#166534;font-size:0.88rem;margin:0 0 12px;">Apresente-o na portaria para confirmar sua entrada.</p>
+    <img src="cid:qrcode" alt="QR Code de Acesso" style="width:200px;height:200px;border-radius:8px;" />
     </div>
-    <p style="color:#9ca3af;font-size:0.75rem;text-align:center;margin:16px 0 0;">
-      Este QR code &#233; pessoal e intransfer&#237;vel.
-    </p>
+    <p style="color:#9ca3af;font-size:0.75rem;text-align:center;margin:16px 0 0;">Este QR code é pessoal e intransferível.</p>
   </div>
   <div style="background:#f9fafb;padding:10px 24px;border-top:1px solid #e5e7eb;text-align:center;">
     <p style="color:#9ca3af;font-size:0.75rem;margin:0;">{condominio_nome}</p>
-    {endereco_footer}
   </div>
 </div>"""
 
         resend.api_key = api_key
-        resend.Emails.send(
-            {
-                "from": email_from,
-                "to": [convidado.email],
-                "subject": f"Seu convite para {lista.titulo}",
-                "html": html_body,
-                "attachments": [
-                    {
-                        "filename": "qrcode.png",
-                        "content": qr_bytes,
-                    }
-                ],
-            }
-        )
+        payload = {
+            "from": email_from,
+            "to": [convidado.email],
+            "subject": f"Seu convite para {lista.titulo}",
+            "html": html_body,
+            "attachments": [
+                {
+                    "filename": "qrcode.png",
+                    "content": qr_bytes_list,
+                    "content_id": "qrcode",
+                    "disposition": "inline",
+                }
+            ],
+        }
+        # se houver logo como FileField, enviar também como anexo inline com content_id=logo
+        try:
+            if condominio and getattr(condominio, "logo", None):
+                logo_field = condominio.logo
+                try:
+                    logo_field.open("rb")
+                    logo_bytes = logo_field.read()
+                    logo_field.close()
+                    payload.setdefault("attachments", []).append(
+                        {
+                            "filename": getattr(
+                                logo_field, "name", "logo.png"
+                            ),
+                            "content": list(logo_bytes),
+                            "content_id": "logo",
+                            "disposition": "inline",
+                        }
+                    )
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        resend.Emails.send(payload)
         return True
     except Exception:
         return False
@@ -373,7 +454,6 @@ def adicionar_convidado_view(request, lista_pk):
     cpf_raw = request.data.get("cpf", "")
     cpf_digits = "".join(c for c in str(cpf_raw) if c.isdigit())
     nome = str(request.data.get("nome", "")).strip()
-
     if len(cpf_digits) != 11:
         return Response(
             {"error": "CPF deve ter 11 dígitos numéricos."},
