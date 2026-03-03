@@ -106,21 +106,45 @@ def _enviar_qrcode_email(convidado, lista):
         qr_bytes_list = list(qr_bytes)
         qr_base64 = base64.b64encode(qr_bytes).decode()
 
-        # Tentar obter logo do condomínio (FileField) e converter para base64
+        # Tentar obter logo do condomínio — prioriza armazenamento em DB, fallback no FileField
         logo_html = ""
+        logo_email_bytes = None
+        logo_filename = "logo.png"
         try:
-            if condominio and getattr(condominio, "logo", None):
+            from PIL import Image
+
+            raw_logo_bytes = None
+            # 1) Preferir logo armazenada diretamente no banco
+            if condominio and getattr(condominio, "logo_db_data", None):
+                raw_logo_bytes = bytes(condominio.logo_db_data)
+                logo_filename = condominio.logo_db_filename or "logo.png"
+            # 2) Fallback: FileField
+            elif condominio and getattr(condominio, "logo", None):
                 logo_field = condominio.logo
                 try:
                     logo_field.open("rb")
-                    logo_bytes = logo_field.read()
+                    raw_logo_bytes = logo_field.read()
                     logo_field.close()
-                    logo_b64 = base64.b64encode(logo_bytes).decode()
-                    logo_html = f'<img src="data:image/png;base64,{logo_b64}" alt="{condominio_nome}" style="max-width:150px; max-height:80px;margin-top:8px;" />'
+                    logo_filename = (
+                        logo_field.name.split("/")[-1]
+                        if logo_field.name
+                        else "logo.png"
+                    )
                 except Exception:
-                    logo_html = ""
+                    raw_logo_bytes = None
+
+            if raw_logo_bytes:
+                # Redimensionar para caber em max 220 × 80 px mantendo proporção
+                img_buf = io.BytesIO(raw_logo_bytes)
+                img = Image.open(img_buf).convert("RGBA")
+                img.thumbnail((220, 80), Image.LANCZOS)
+                out_buf = io.BytesIO()
+                img.save(out_buf, format="PNG")  # PNG preserva transparência
+                logo_email_bytes = out_buf.getvalue()
+                logo_html = f'<img src="cid:logo" alt="{condominio_nome}" style="max-width:220px;max-height:80px;margin-top:8px;" />'
         except Exception:
             logo_html = ""
+            logo_email_bytes = None
 
         morador_nome = (
             getattr(morador, "full_name", None)
@@ -197,28 +221,16 @@ def _enviar_qrcode_email(convidado, lista):
             ],
         }
 
-        # se houver logo como FileField, enviar também como anexo inline com content_id=logo
-        try:
-            if condominio and getattr(condominio, "logo", None):
-                logo_field = condominio.logo
-                try:
-                    logo_field.open("rb")
-                    logo_bytes = logo_field.read()
-                    logo_field.close()
-                    payload.setdefault("attachments", []).append(
-                        {
-                            "filename": getattr(
-                                logo_field, "name", "logo.png"
-                            ),
-                            "content": base64.b64encode(logo_bytes).decode(),
-                            "content_id": "logo",
-                            "disposition": "inline",
-                        }
-                    )
-                except Exception:
-                    pass
-        except Exception:
-            pass
+        # Incluir logo redimensionada como anexo inline se disponível
+        if logo_email_bytes:
+            payload["attachments"].append(
+                {
+                    "filename": "logo.png",
+                    "content": base64.b64encode(logo_email_bytes).decode(),
+                    "content_id": "logo",
+                    "disposition": "inline",
+                }
+            )
 
         resend.Emails.send(payload)
         return True
