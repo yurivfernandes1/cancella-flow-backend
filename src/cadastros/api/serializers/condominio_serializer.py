@@ -30,7 +30,6 @@ class CondominioSerializer(serializers.ModelSerializer):
             "endereco_completo",
             "cnpj",
             "telefone",
-            "logo",
             "logo_url",
             "sindico_nome",
             "sindico_id",

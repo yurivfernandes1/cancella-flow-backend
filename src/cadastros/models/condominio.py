@@ -1,4 +1,3 @@
-from app.utils.image_validators import validate_logo_file
 from django.db import models
 
 
@@ -44,8 +43,7 @@ class Condominio(models.Model):
         upload_to="condominios/logos/",
         null=True,
         blank=True,
-        validators=[validate_logo_file],
-        help_text="Logo quadrada até 250x250px (png, jpg, jpeg, svg)",
+        help_text="Logo do condomínio (png, jpg, jpeg, svg — qualquer tamanho)",
     )
     # Campos para armazenar logo diretamente no banco (BLOB)
     logo_db_data = models.BinaryField(

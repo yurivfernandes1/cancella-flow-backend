@@ -10,6 +10,22 @@ from ...models import Condominio
 from ..serializers import CondominioListSerializer, CondominioSerializer
 
 
+def _salvar_logo_db(condominio, request):
+    """Salva o arquivo 'logo' de request.FILES como BLOB no modelo."""
+    arquivo = request.FILES.get("logo")
+    if arquivo:
+        condominio.logo_db_data = arquivo.read()
+        condominio.logo_db_content_type = arquivo.content_type
+        condominio.logo_db_filename = arquivo.name
+        condominio.save(
+            update_fields=[
+                "logo_db_data",
+                "logo_db_content_type",
+                "logo_db_filename",
+            ]
+        )
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def condominio_list_view(request):
@@ -84,14 +100,7 @@ def condominio_create_view(request):
         )
         if serializer.is_valid():
             condominio = serializer.save()
-            # Log para debug: verificar se o arquivo de logo foi recebido e salvo
-            try:
-                logo_path = condominio.logo.url if condominio.logo else None
-            except Exception:
-                logo_path = None
-            print(
-                f"[condominio_create_view] Condominio criado id={condominio.id}, logo={logo_path}"
-            )
+            _salvar_logo_db(condominio, request)
             return Response(
                 CondominioSerializer(
                     condominio, context={"request": request}
@@ -165,14 +174,7 @@ def condominio_update_view(request, pk):
 
         if serializer.is_valid():
             condominio = serializer.save()
-            # Log para debug: confirmar logo atualizada
-            try:
-                logo_path = condominio.logo.url if condominio.logo else None
-            except Exception:
-                logo_path = None
-            print(
-                f"[condominio_update_view] Condominio id={condominio.id} atualizado, logo={logo_path}"
-            )
+            _salvar_logo_db(condominio, request)
             return Response(
                 CondominioSerializer(
                     condominio, context={"request": request}
