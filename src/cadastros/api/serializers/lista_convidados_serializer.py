@@ -8,8 +8,24 @@ class ConvidadoListaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ConvidadoLista
-        fields = ["id", "cpf", "cpf_formatado", "nome", "created_on"]
-        read_only_fields = ["id", "created_on"]
+        fields = [
+            "id",
+            "cpf",
+            "cpf_formatado",
+            "nome",
+            "email",
+            "qr_token",
+            "entrada_confirmada",
+            "entrada_em",
+            "created_on",
+        ]
+        read_only_fields = [
+            "id",
+            "cpf_formatado",
+            "qr_token",
+            "entrada_em",
+            "created_on",
+        ]
 
     def get_cpf_formatado(self, obj):
         cpf = obj.cpf
@@ -22,6 +38,7 @@ class ListaConvidadosSerializer(serializers.ModelSerializer):
     convidados = ConvidadoListaSerializer(many=True, read_only=True)
     morador_nome = serializers.SerializerMethodField()
     total_convidados = serializers.SerializerMethodField()
+    local_descricao = serializers.SerializerMethodField()
 
     class Meta:
         model = ListaConvidados
@@ -33,6 +50,10 @@ class ListaConvidadosSerializer(serializers.ModelSerializer):
             "descricao",
             "data_evento",
             "ativa",
+            "local_tipo",
+            "espaco",
+            "unidade_evento",
+            "local_descricao",
             "total_convidados",
             "convidados",
             "created_on",
@@ -45,3 +66,10 @@ class ListaConvidadosSerializer(serializers.ModelSerializer):
 
     def get_total_convidados(self, obj):
         return obj.convidados.count()
+
+    def get_local_descricao(self, obj):
+        if obj.local_tipo == "espaco" and obj.espaco:
+            return f"Espaço: {obj.espaco.nome}"
+        if obj.local_tipo == "unidade" and obj.unidade_evento:
+            return f"Unidade: {obj.unidade_evento.identificacao_completa}"
+        return "Local não informado"

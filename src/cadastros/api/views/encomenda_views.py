@@ -354,9 +354,7 @@ def encomenda_badge_view(request):
         user = request.user
         now = timezone.now()
 
-        qs = Encomenda.objects.select_related("unidade").filter(
-            retirado_em__isnull=True
-        )
+        qs = Encomenda.objects.filter(retirado_em__isnull=True)
 
         is_portaria = user.groups.filter(name="Portaria").exists()
         is_morador = user.groups.filter(name="Moradores").exists()

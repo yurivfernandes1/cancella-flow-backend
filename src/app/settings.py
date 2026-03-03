@@ -184,6 +184,9 @@ CORS_ALLOWED_ORIGINS = [
     "https://cancellaflow.yurivf.com.br",
 ]
 
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+EMAIL_FROM = os.getenv("EMAIL_FROM", "noreply@cancellaflow.com.br")
+
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = [

@@ -304,6 +304,16 @@ urlpatterns = [
     ),
     # URLs para Listas de Convidados
     path(
+        "listas-convidados/confirmar-por-qrcode/",
+        views.confirmar_por_qrcode_view,
+        name="lista-convidados-confirmar-por-qrcode",
+    ),
+    path(
+        "listas-convidados/convidados-anteriores/",
+        views.convidados_anteriores_view,
+        name="lista-convidados-convidados-anteriores",
+    ),
+    path(
         "listas-convidados/",
         views.listas_convidados_view,
         name="listas-convidados",
@@ -332,6 +342,16 @@ urlpatterns = [
         "listas-convidados/<int:lista_pk>/convidados/<int:convidado_pk>/update/",
         views.atualizar_convidado_view,
         name="lista-convidados-atualizar-convidado",
+    ),
+    path(
+        "listas-convidados/<int:lista_pk>/convidados/<int:convidado_pk>/confirmar-entrada/",
+        views.confirmar_entrada_view,
+        name="lista-convidados-confirmar-entrada",
+    ),
+    path(
+        "listas-convidados/<int:lista_pk>/convidados/<int:convidado_pk>/enviar-qrcode/",
+        views.enviar_qrcode_view,
+        name="lista-convidados-enviar-qrcode",
     ),
     path(
         "listas-convidados/buscar-cpf/",
