@@ -45,14 +45,14 @@ def criar_aviso_encomenda(encomenda, criador):
         )  # Aviso válido por 30 dias
         # Evitar criar avisos duplicados caso a função seja chamada duas vezes
         existing = Aviso.objects.filter(
+            Q(grupo=grupo_moradores) | Q(grupos=grupo_moradores),
             titulo=titulo,
-            grupo=grupo_moradores,
             created_by=criador,
             status=Aviso.STATUS_ATIVO,
         ).exists()
 
         if not existing:
-            Aviso.objects.create(
+            aviso = Aviso.objects.create(
                 titulo=titulo,
                 descricao=descricao,
                 grupo=grupo_moradores,
@@ -62,6 +62,7 @@ def criar_aviso_encomenda(encomenda, criador):
                 data_fim=data_fim,
                 created_by=criador,
             )
+            aviso.grupos.add(grupo_moradores)
     except Exception as e:
         # Não deve interromper a criação da encomenda se falhar
         print(f"Erro ao criar aviso de encomenda: {str(e)}")

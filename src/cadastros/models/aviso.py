@@ -30,9 +30,17 @@ class Aviso(models.Model):
     descricao = models.TextField()
     grupo = models.ForeignKey(
         Group,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="avisos",
-        help_text="Grupo de usuários que verá este aviso",
+        help_text="(Legado) grupo principal de usuários que verá este aviso",
+    )
+    grupos = models.ManyToManyField(
+        Group,
+        related_name="avisos_destino",
+        blank=True,
+        help_text="Grupos de usuários que verão este aviso",
     )
     prioridade = models.CharField(
         max_length=10, choices=PRIORIDADE_CHOICES, default=PRIORIDADE_MEDIA
@@ -81,3 +89,12 @@ class Aviso(models.Model):
         if self.data_fim and self.data_fim < now:
             return False
         return True
+
+    @property
+    def grupos_alvo(self):
+        grupos = self.grupos.all()
+        if grupos.exists():
+            return grupos
+        if self.grupo_id:
+            return Group.objects.filter(id=self.grupo_id)
+        return Group.objects.none()

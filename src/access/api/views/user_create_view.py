@@ -18,8 +18,8 @@ class UserCreateView(APIView):
         # Verificar permissões baseadas no tipo de usuário que está sendo criado
         user_type = request.data.get("user_type", "funcionario")
 
-        # Administradores podem criar síndicos
-        if user_type == "sindico":
+        # Administradores podem criar síndicos (incluindo síndico que também é morador)
+        if user_type in ["sindico", "sindico_morador"]:
             if not (
                 request.user.is_staff
                 or request.user.groups.filter(name__iexact="admin").exists()
@@ -44,7 +44,7 @@ class UserCreateView(APIView):
         try:
             # Determinar condomínio
             condominio = None
-            if user_type == "sindico":
+            if user_type in ["sindico", "sindico_morador"]:
                 condominio_id = request.data.get("condominio_id")
                 if not condominio_id:
                     return Response(
@@ -73,6 +73,16 @@ class UserCreateView(APIView):
 
             unidade = None
             unidade_id = request.data.get("unidade_id")
+
+            # Morador e síndico_morador exigem unidade obrigatória
+            if user_type in ["morador", "sindico_morador"] and not unidade_id:
+                return Response(
+                    {
+                        "error": "Unidade é obrigatória para cadastro de morador"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             if unidade_id:
                 try:
                     unidade = Unidade.objects.get(id=unidade_id)

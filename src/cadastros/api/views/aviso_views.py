@@ -26,7 +26,9 @@ def aviso_list_view(request):
     """
     try:
         user = request.user
-        avisos = Aviso.objects.select_related("grupo", "created_by")
+        avisos = Aviso.objects.select_related(
+            "grupo", "created_by"
+        ).prefetch_related("grupos")
 
         # Define se é síndico pelo nome do grupo (aceita variação sem acento)
         is_sindico = user.groups.filter(
@@ -46,9 +48,13 @@ def aviso_list_view(request):
             else:
                 # Demais perfis: filtrar por grupo E por condomínio do criador
                 grupos_ids = list(user.groups.values_list("id", flat=True))
-                avisos = avisos.filter(grupo_id__in=grupos_ids)
+                avisos = avisos.filter(
+                    Q(grupos__id__in=grupos_ids) | Q(grupo_id__in=grupos_ids)
+                )
                 if getattr(user, "condominio", None):
-                    avisos = avisos.filter(created_by__condominio=user.condominio)
+                    avisos = avisos.filter(
+                        created_by__condominio=user.condominio
+                    )
 
                 # Se for morador, filtrar avisos de encomenda apenas da sua unidade
                 # Identificamos avisos de encomenda pelo título que contém "Nova encomenda"
@@ -66,12 +72,16 @@ def aviso_list_view(request):
                         avisos = avisos.filter(
                             (
                                 Q(titulo__icontains="Nova encomenda")
-                                & Q(titulo__icontains=user.unidade.identificacao_completa)
+                                & Q(
+                                    titulo__icontains=user.unidade.identificacao_completa
+                                )
                             )
                             | ~Q(titulo__icontains="Nova encomenda")
                         )
                     else:
-                        avisos = avisos.filter(~Q(titulo__icontains="Nova encomenda"))
+                        avisos = avisos.filter(
+                            ~Q(titulo__icontains="Nova encomenda")
+                        )
 
         # Filtros
         search = request.GET.get("search", "").strip()
@@ -80,6 +90,7 @@ def aviso_list_view(request):
                 Q(titulo__icontains=search)
                 | Q(descricao__icontains=search)
                 | Q(grupo__name__icontains=search)
+                | Q(grupos__name__icontains=search)
             )
 
         status_filter = request.GET.get("status")
@@ -92,7 +103,9 @@ def aviso_list_view(request):
 
         grupo_id = request.GET.get("grupo_id")
         if grupo_id:
-            avisos = avisos.filter(grupo_id=grupo_id)
+            avisos = avisos.filter(
+                Q(grupo_id=grupo_id) | Q(grupos__id=grupo_id)
+            )
 
         vigente = request.GET.get("vigente")
         if vigente in {"1", "true", "True"}:
@@ -105,7 +118,7 @@ def aviso_list_view(request):
             ).filter(Q(data_fim__gte=now) | Q(data_fim__isnull=True))
 
         # Ordenação
-        avisos = avisos.order_by("-prioridade", "-data_inicio")
+        avisos = avisos.order_by("-prioridade", "-data_inicio").distinct()
 
         # Paginação
         page = int(request.GET.get("page", 1))
@@ -136,7 +149,9 @@ def aviso_home_view(request):
     """Retorna avisos vigentes para exibir na Home do usuário."""
     try:
         user = request.user
-        avisos = Aviso.objects.select_related("grupo", "created_by").all()
+        avisos = Aviso.objects.select_related(
+            "grupo", "created_by"
+        ).prefetch_related("grupos")
         # Define se é síndico pelo nome do grupo (aceita variação sem acento)
         is_sindico = user.groups.filter(
             Q(name__iexact="Síndicos") | Q(name__iexact="Sindicos")
@@ -146,7 +161,9 @@ def aviso_home_view(request):
             return Response([])
         # Demais perfis recebem por grupo e pelo condomínio do criador
         grupos_ids = list(user.groups.values_list("id", flat=True))
-        avisos = avisos.filter(grupo_id__in=grupos_ids)
+        avisos = avisos.filter(
+            Q(grupos__id__in=grupos_ids) | Q(grupo_id__in=grupos_ids)
+        )
         if getattr(user, "condominio", None):
             avisos = avisos.filter(created_by__condominio=user.condominio)
 
@@ -174,7 +191,8 @@ def aviso_home_view(request):
         avisos = (
             avisos.filter(status=Aviso.STATUS_ATIVO, data_inicio__lte=now)
             .filter(Q(data_fim__gte=now) | Q(data_fim__isnull=True))
-            .order_by("-prioridade", "-data_inicio")[:10]
+            .order_by("-prioridade", "-data_inicio")
+            .distinct()[:10]
         )
 
         serializer = AvisoListSerializer(avisos, many=True)
@@ -210,7 +228,11 @@ def aviso_create_view(request):
 @permission_classes([IsAuthenticated])
 def aviso_detail_view(request, pk):
     try:
-        aviso = Aviso.objects.select_related("created_by").get(pk=pk)
+        aviso = (
+            Aviso.objects.select_related("created_by", "grupo")
+            .prefetch_related("grupos")
+            .get(pk=pk)
+        )
         user = request.user
         # Garantir acesso: staff sempre pode; síndico só do seu condomínio; demais por grupo e condomínio
         if not user.is_staff:
@@ -234,8 +256,13 @@ def aviso_detail_view(request, pk):
                         status=status.HTTP_403_FORBIDDEN,
                     )
             else:
+                target_group_ids = list(
+                    aviso.grupos.values_list("id", flat=True)
+                )
+                if not target_group_ids and aviso.grupo_id:
+                    target_group_ids = [aviso.grupo_id]
                 if (
-                    not user.groups.filter(id=aviso.grupo_id).exists()
+                    not user.groups.filter(id__in=target_group_ids).exists()
                     or not same_condo
                 ):
                     return Response(
@@ -263,15 +290,26 @@ def aviso_update_view(request, pk):
     try:
         aviso = Aviso.objects.get(pk=pk)
         partial = request.method == "PATCH"
-        serializer = AvisoSerializer(aviso, data=request.data, partial=partial, context={"request": request})
+        serializer = AvisoSerializer(
+            aviso,
+            data=request.data,
+            partial=partial,
+            context={"request": request},
+        )
         if serializer.is_valid():
             aviso = serializer.save()
             return Response(AvisoSerializer(aviso).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Aviso.DoesNotExist:
-        return Response({"error": "Aviso não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Aviso não encontrado."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
     except Exception as e:
-        return Response({"error": f"Erro ao atualizar aviso: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": f"Erro ao atualizar aviso: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @api_view(["DELETE"])

@@ -71,15 +71,23 @@ class VisitanteAdmin(admin.ModelAdmin):
 class AvisoAdmin(admin.ModelAdmin):
     list_display = (
         "titulo",
-        "grupo",
+        "grupos_display",
         "prioridade",
         "status",
         "data_inicio",
         "data_fim",
         "created_at",
     )
-    list_filter = ("grupo", "prioridade", "status")
-    search_fields = ("titulo", "descricao", "grupo__name")
+    list_filter = ("grupos", "prioridade", "status")
+    search_fields = ("titulo", "descricao", "grupo__name", "grupos__name")
+
+    def grupos_display(self, obj):
+        nomes = list(obj.grupos.values_list("name", flat=True))
+        if nomes:
+            return ", ".join(nomes)
+        return obj.grupo.name if obj.grupo else "-"
+
+    grupos_display.short_description = "Grupos"
 
 
 @admin.register(Ocorrencia)

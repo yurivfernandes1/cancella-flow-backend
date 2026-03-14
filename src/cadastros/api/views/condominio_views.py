@@ -26,6 +26,17 @@ def _salvar_logo_db(condominio, request):
         )
 
 
+def _can_manage_condominio(user, condominio_id):
+    """Admin/staff gerenciam qualquer condomínio; síndico somente o próprio."""
+    if user.is_staff or user.groups.filter(name="admin").exists():
+        return True
+
+    is_sindico = user.groups.filter(
+        Q(name__iexact="Síndicos") | Q(name__iexact="Sindicos")
+    ).exists()
+    return is_sindico and user.condominio_id == condominio_id
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def condominio_list_view(request):
@@ -153,10 +164,7 @@ def condominio_update_view(request, pk):
     """
     try:
         # Verificar permissão
-        if not (
-            request.user.is_staff
-            or request.user.groups.filter(name="admin").exists()
-        ):
+        if not _can_manage_condominio(request.user, pk):
             return Response(
                 {"error": "Você não tem permissão para editar condomínios."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -301,11 +309,7 @@ def condominio_logo_db_view(request, pk):
 def condominio_upload_logo_db_view(request, pk):
     """Recebe upload multipart/form-data e salva bytes no modelo CondominioLogo."""
     try:
-        # Permissão: somente staff ou admin
-        if not (
-            request.user.is_staff
-            or request.user.groups.filter(name="admin").exists()
-        ):
+        if not _can_manage_condominio(request.user, pk):
             return Response(
                 {"error": "Você não tem permissão."},
                 status=status.HTTP_403_FORBIDDEN,

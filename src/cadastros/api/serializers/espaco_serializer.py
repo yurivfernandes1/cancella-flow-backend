@@ -175,6 +175,7 @@ class EspacoReservaListSerializer(serializers.ModelSerializer):
             "data_reserva",
             "valor_cobrado",
             "status",
+            "created_on",
         ]
 
     def get_unidade(self, obj):
