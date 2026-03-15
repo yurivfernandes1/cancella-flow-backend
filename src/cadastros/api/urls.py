@@ -147,6 +147,11 @@ urlpatterns = [
         views.visitante_enviar_qrcode_view,
         name="visitante-enviar-qrcode",
     ),
+    path(
+        "download-qrcode/",
+        views.download_qrcode_view,
+        name="download-qrcode",
+    ),
     # URLs para Avisos
     path("avisos/", views.aviso_list_view, name="aviso-list"),
     path("avisos/home/", views.aviso_home_view, name="aviso-home"),

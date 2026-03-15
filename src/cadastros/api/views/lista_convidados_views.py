@@ -920,3 +920,96 @@ def confirmar_por_qrcode_view(request):
             "morador_nome": morador_nome,
         }
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def download_qrcode_view(request):
+    """
+    GET ?token=<uuid> — Retorna um PNG do QR Code com o nome da pessoa abaixo.
+    Busca o token em ConvidadoLista e depois em Visitante.
+    """
+    import io
+
+    import qrcode
+    from django.http import HttpResponse
+    from PIL import Image, ImageDraw, ImageFont
+
+    token = request.query_params.get("token", "").strip()
+    if not token:
+        return Response(
+            {"error": "Token é obrigatório."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    nome = None
+    try:
+        convidado = ConvidadoLista.objects.get(qr_token=token)
+        nome = convidado.nome
+    except ConvidadoLista.DoesNotExist:
+        pass
+
+    if nome is None:
+        try:
+            visitante = Visitante.objects.get(qr_token=token)
+            nome = visitante.nome
+        except Visitante.DoesNotExist:
+            return Response(
+                {"error": "QR code não encontrado."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+    # Gerar QR code
+    qr_img = qrcode.make(str(token))
+    qr_size = qr_img.size[0]
+
+    # Canvas: QR + padding + faixa com o nome
+    padding = 20
+    name_height = 44
+    canvas = Image.new(
+        "RGB",
+        (qr_size + padding * 2, qr_size + padding * 2 + name_height),
+        "white",
+    )
+    canvas.paste(qr_img, (padding, padding))
+
+    draw = ImageDraw.Draw(canvas)
+    font = None
+    for font_path in [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+    ]:
+        try:
+            font = ImageFont.truetype(font_path, 18)
+            break
+        except Exception:
+            continue
+    if font is None:
+        font = ImageFont.load_default()
+
+    text_x = canvas.width // 2
+    text_y = qr_size + padding + name_height // 2
+    try:
+        draw.text((text_x, text_y), nome, fill="#111827", font=font, anchor="mm")
+    except TypeError:
+        try:
+            bbox = draw.textbbox((0, 0), nome, font=font)
+            text_w = bbox[2] - bbox[0]
+        except AttributeError:
+            text_w = len(nome) * 10
+        draw.text((text_x - text_w // 2, text_y - 9), nome, fill="#111827", font=font)
+
+    output = io.BytesIO()
+    canvas.save(output, format="PNG")
+    output.seek(0)
+
+    safe_nome = "".join(
+        c if c.isalnum() or c in "-_" else "-"
+        for c in nome.lower().replace(" ", "-")
+    )
+    response = HttpResponse(output.read(), content_type="image/png")
+    response["Content-Disposition"] = (
+        f'attachment; filename="qrcode-{safe_nome}.png"'
+    )
+    return response

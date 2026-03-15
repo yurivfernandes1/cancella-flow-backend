@@ -66,6 +66,7 @@ from .lista_convidados_views import (
     confirmar_entrada_view,
     confirmar_por_qrcode_view,
     convidados_anteriores_view,
+    download_qrcode_view,
     enviar_qrcode_view,
     lista_convidados_detail_view,
     listas_convidados_view,
