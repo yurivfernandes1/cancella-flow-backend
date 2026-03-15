@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.core.paginator import Paginator
 from django.db.models import Q
 from rest_framework import status
@@ -491,6 +493,11 @@ def espaco_reserva_list_view(request):
 
         data_ini = request.GET.get("data_ini")
         data_fim = request.GET.get("data_fim")
+        incluir_passados = request.GET.get("incluir_passados")
+
+        if not data_ini and not incluir_passados:
+            data_ini = date.today().isoformat()
+
         if data_ini:
             reservas = reservas.filter(data_reserva__gte=data_ini)
         if data_fim:

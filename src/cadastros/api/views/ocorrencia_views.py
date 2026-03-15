@@ -52,8 +52,12 @@ def ocorrencia_list_view(request):
             ).filter(criado_por=user)
 
         status_filter = request.GET.get("status")
+        incluir_finalizadas = request.GET.get("incluir_finalizadas")
+
         if status_filter:
             qs = qs.filter(status=status_filter)
+        elif not incluir_finalizadas:
+            qs = qs.exclude(status__in=["resolvida", "fechada"])
 
         tipo_filter = request.GET.get("tipo")
         if tipo_filter:
