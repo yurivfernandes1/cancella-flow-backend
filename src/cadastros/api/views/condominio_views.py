@@ -284,7 +284,7 @@ def condominio_logo_db_view(request, pk):
             )
 
         return HttpResponse(
-            condominio.logo_db_data,
+            bytes(condominio.logo_db_data),
             content_type=condominio.logo_db_content_type
             or "application/octet-stream",
         )
