@@ -54,10 +54,20 @@ def _enviar_qrcode_email_visitante(visitante):
                         with urllib.request.urlopen(req, timeout=5) as resp:
                             data = json.load(resp)
                         if not data.get("erro"):
-                            for part in [data.get("logradouro"), data.get("bairro")]:
+                            for part in [
+                                data.get("logradouro"),
+                                data.get("bairro"),
+                            ]:
                                 if part:
                                     endereco_parts.append(part)
-                            cidade_uf = ", ".join(p for p in [data.get("localidade"), data.get("uf")] if p)
+                            cidade_uf = ", ".join(
+                                p
+                                for p in [
+                                    data.get("localidade"),
+                                    data.get("uf"),
+                                ]
+                                if p
+                            )
                             if cidade_uf:
                                 endereco_parts.append(cidade_uf)
                             endereco_parts.append(f"CEP {cep_raw}")
@@ -68,7 +78,9 @@ def _enviar_qrcode_email_visitante(visitante):
                 val = getattr(condominio, attr, None)
                 if val:
                     endereco_parts.append(str(val))
-            condominio_endereco = ", ".join(endereco_parts) if endereco_parts else ""
+            condominio_endereco = (
+                ", ".join(endereco_parts) if endereco_parts else ""
+            )
 
         morador_nome = (
             getattr(morador, "full_name", None)
@@ -130,7 +142,7 @@ def _enviar_qrcode_email_visitante(visitante):
       <strong>{morador_nome}</strong> registrou sua visita ao condomínio.<br/>
       Apresente o QR Code abaixo na portaria para confirmar sua entrada.
     </p>
-    {f'<table style="width:100%;border-collapse:collapse;margin:0 0 20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">{endereco_row}</table>' if endereco_row else ''}
+    {f'<table style="width:100%;border-collapse:collapse;margin:0 0 20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">{endereco_row}</table>' if endereco_row else ""}
     <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px 20px;text-align:center;">
       <p style="color:#15803d;font-weight:600;font-size:1rem;margin:0 0 8px;">QR Code de Acesso</p>
       <p style="color:#166534;font-size:0.88rem;margin:0 0 12px;">Apresente-o na portaria para confirmar sua entrada.</p>
@@ -439,7 +451,9 @@ def visitante_enviar_qrcode_view(request, pk):
 
     is_morador = user.groups.filter(name="Moradores").exists()
     if not (user.is_staff or (is_morador and visitante.morador == user)):
-        return Response({"error": "Sem permissão."}, status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            {"error": "Sem permissão."}, status=status.HTTP_403_FORBIDDEN
+        )
 
     if not visitante.email:
         return Response(
@@ -449,8 +463,12 @@ def visitante_enviar_qrcode_view(request, pk):
 
     enviado = _enviar_qrcode_email_visitante(visitante)
     if enviado:
-        return Response({"success": True, "message": "QR code enviado com sucesso."})
+        return Response(
+            {"success": True, "message": "QR code enviado com sucesso."}
+        )
     return Response(
-        {"error": "Falha ao enviar o e-mail. Verifique as configurações do servidor."},
+        {
+            "error": "Falha ao enviar o e-mail. Verifique as configurações do servidor."
+        },
         status=status.HTTP_500_INTERNAL_SERVER_ERROR,
     )
