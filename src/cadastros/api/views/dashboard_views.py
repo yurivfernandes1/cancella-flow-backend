@@ -174,15 +174,23 @@ def sindico_stats_view(request):
 
         # 1. MORADORES
         try:
-            moradores_total = User.objects.filter(
-                condominio_id=condominio_id, groups__name="Moradores"
-            ).count()
+            moradores_total = (
+                User.objects.filter(
+                    condominio_id=condominio_id, groups__name="Moradores"
+                )
+                .distinct()
+                .count()
+            )
 
-            moradores_ativos = User.objects.filter(
-                condominio_id=condominio_id,
-                groups__name="Moradores",
-                is_active=True,
-            ).count()
+            moradores_ativos = (
+                User.objects.filter(
+                    condominio_id=condominio_id,
+                    groups__name="Moradores",
+                    is_active=True,
+                )
+                .distinct()
+                .count()
+            )
 
             percentual_ativos = (
                 round((moradores_ativos / moradores_total) * 100)
@@ -197,9 +205,13 @@ def sindico_stats_view(request):
 
         # 2. FUNCIONÁRIOS (Portaria)
         try:
-            funcionarios_total = User.objects.filter(
-                condominio_id=condominio_id, groups__name="Portaria"
-            ).count()
+            funcionarios_total = (
+                User.objects.filter(
+                    condominio_id=condominio_id, groups__name="Portaria"
+                )
+                .distinct()
+                .count()
+            )
         except Exception:
             logger.exception("Erro ao calcular funcionários do condomínio")
             funcionarios_total = 0
@@ -252,8 +264,7 @@ def sindico_stats_view(request):
         try:
             avisos_ativos = (
                 Aviso.objects.filter(
-                    created_by__isnull=False,
-                    created_by__condominio__id=condominio_id,
+                    created_by__condominio_id=condominio_id,
                     status=Aviso.STATUS_ATIVO,
                     data_inicio__lte=agora,
                 )
