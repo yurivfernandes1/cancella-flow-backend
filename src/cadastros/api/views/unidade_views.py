@@ -50,9 +50,8 @@ def unidade_list_view(request):
 
         # Busca
         search = request.GET.get("search", "")
-        # Relação com usuários é reversa (User.unidade related_name='morador'),
-        # portanto devemos usar prefetch_related em vez de select_related
-        unidades = Unidade.objects.prefetch_related("morador").all()
+        # Relação com usuários é M2M (User.unidades, related_name='moradores')
+        unidades = Unidade.objects.prefetch_related("moradores").all()
 
         # Controle de acesso por grupo
         is_sindico = user.groups.filter(name="Síndicos").exists()
@@ -67,7 +66,7 @@ def unidade_list_view(request):
 
         if is_morador and not (user.is_staff or is_sindico or is_portaria):
             # Moradores veem apenas suas próprias unidades
-            unidades = unidades.filter(morador=user)
+            unidades = unidades.filter(moradores=user)
         elif not (user.is_staff or is_sindico or is_portaria):
             # Usuários sem permissão não veem nada
             unidades = Unidade.objects.none()
@@ -76,8 +75,8 @@ def unidade_list_view(request):
             unidades = unidades.filter(
                 Q(numero__icontains=search)
                 | Q(bloco__icontains=search)
-                | Q(morador__first_name__icontains=search)
-                | Q(morador__last_name__icontains=search)
+                | Q(moradores__first_name__icontains=search)
+                | Q(moradores__last_name__icontains=search)
             ).distinct()
 
         # Filtro de status
@@ -200,7 +199,7 @@ def unidade_detail_view(request, pk):
     """
     try:
         # Relação reversa: usar prefetch_related
-        unidade = Unidade.objects.prefetch_related("morador").get(pk=pk)
+        unidade = Unidade.objects.prefetch_related("moradores").get(pk=pk)
         serializer = UnidadeSerializer(unidade)
         return Response(serializer.data)
 
@@ -887,11 +886,11 @@ def import_excel_view(request):
                 cpf=cpf_digits,
                 phone=telefone_digits,
                 email=email,
-                unidade=unidade,
                 condominio=condominio,
                 first_access=True,
                 created_by=user,
             )
+            morador.unidades.add(unidade)
             morador.groups.add(moradores_group)
             criados += 1
 

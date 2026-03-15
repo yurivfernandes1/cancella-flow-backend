@@ -43,13 +43,19 @@ class UnidadeAdmin(admin.ModelAdmin):
     list_display = (
         "numero",
         "bloco",
-        "morador",
+        "get_moradores",
         "is_active",
         "created_on",
     )
     list_filter = ("is_active", "created_on", "updated_on")
-    search_fields = ("numero", "bloco", "morador__full_name")
+    search_fields = ("numero", "bloco", "moradores__full_name")
     readonly_fields = ("created_on", "updated_on")
+
+    def get_moradores(self, obj):
+        nomes = list(obj.moradores.values_list("full_name", flat=True))
+        return ", ".join(nomes) if nomes else "-"
+
+    get_moradores.short_description = "Moradores"
 
 
 @admin.register(Visitante)

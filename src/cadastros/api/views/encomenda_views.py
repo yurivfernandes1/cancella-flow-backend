@@ -18,7 +18,7 @@ def criar_aviso_encomenda(encomenda, criador):
     """
     try:
         # Verificar se a unidade tem pelo menos um morador associado (relação reversa)
-        if not encomenda.unidade.morador.all().exists():
+        if not encomenda.unidade.moradores.all().exists():
             return
 
         # Buscar grupo Moradores
@@ -96,10 +96,9 @@ def encomenda_list_view(request):
         unidade_antiga = request.GET.get("unidade_antiga", "")
         codigo_antiga = request.GET.get("codigo_antiga", "")
 
-        # 'morador' é relação reversa em Unidade; não pode usar select_related
         encomendas = (
             Encomenda.objects.select_related("unidade")
-            .prefetch_related("unidade__morador")
+            .prefetch_related("unidade__moradores")
             .all()
         )
 
@@ -118,9 +117,10 @@ def encomenda_list_view(request):
                 created_by__condominio_id=user.condominio_id
             )
         elif is_morador and not (user.is_staff or is_portaria or is_sindico):
-            # Moradores veem apenas encomendas da sua unidade
-            if user.unidade_id:
-                encomendas = encomendas.filter(unidade_id=user.unidade_id)
+            # Moradores veem apenas encomendas das suas unidades
+            unidades_ids = list(user.unidades.values_list("id", flat=True))
+            if unidades_ids:
+                encomendas = encomendas.filter(unidade_id__in=unidades_ids)
             else:
                 encomendas = Encomenda.objects.none()
         elif not (user.is_staff or is_portaria or is_sindico):
@@ -233,12 +233,9 @@ def encomenda_detail_view(request, pk):
         is_portaria = user.groups.filter(name="Portaria").exists()
         is_morador = user.groups.filter(name="Moradores").exists()
 
-        # Moradores só podem ver encomendas da sua unidade
+        # Moradores só podem ver encomendas das suas unidades
         if is_morador and not (user.is_staff or is_portaria):
-            if (
-                user.unidade_id is None
-                or user.unidade_id != encomenda.unidade_id
-            ):
+            if not user.unidades.filter(id=encomenda.unidade_id).exists():
                 return Response(
                     {
                         "error": "Você não tem permissão para ver esta encomenda."
@@ -363,9 +360,10 @@ def encomenda_badge_view(request):
         is_sindico = user.groups.filter(name="Síndicos").exists()
 
         if is_morador and not (user.is_staff or is_portaria or is_sindico):
-            # Morador: apenas encomendas da própria unidade
-            if user.unidade_id:
-                qs = qs.filter(unidade_id=user.unidade_id)
+            # Morador: apenas encomendas das próprias unidades
+            unidades_ids = list(user.unidades.values_list("id", flat=True))
+            if unidades_ids:
+                qs = qs.filter(unidade_id__in=unidades_ids)
             else:
                 qs = qs.none()
         else:

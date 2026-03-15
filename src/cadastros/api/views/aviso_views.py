@@ -56,26 +56,24 @@ def aviso_list_view(request):
                         created_by__condominio=user.condominio
                     )
 
-                # Se for morador, filtrar avisos de encomenda apenas da sua unidade
-                # Identificamos avisos de encomenda pelo título que contém "Nova encomenda"
+                # Se for morador, filtrar avisos de encomenda apenas das suas unidades
                 is_morador = user.groups.filter(name="Moradores").exists()
-                if is_morador and getattr(user, "unidade", None):
-                    # Mostrar avisos de encomenda apenas se houver encomendas pendentes (sem retirada) para a unidade
-                    # Nota: o título do aviso contém a identificação da unidade
+                user_unidades = list(user.unidades.all()) if is_morador else []
+                if is_morador and user_unidades:
                     from ...models import Encomenda
 
                     has_pending = Encomenda.objects.filter(
-                        unidade_id=user.unidade_id, retirado_em__isnull=True
+                        unidade__in=user_unidades, retirado_em__isnull=True
                     ).exists()
 
                     if has_pending:
-                        avisos = avisos.filter(
-                            (
-                                Q(titulo__icontains="Nova encomenda")
-                                & Q(
-                                    titulo__icontains=user.unidade.identificacao_completa
-                                )
+                        unit_q = Q()
+                        for unidade in user_unidades:
+                            unit_q |= Q(
+                                titulo__icontains=unidade.identificacao_completa
                             )
+                        avisos = avisos.filter(
+                            (Q(titulo__icontains="Nova encomenda") & unit_q)
                             | ~Q(titulo__icontains="Nova encomenda")
                         )
                     else:
@@ -167,19 +165,24 @@ def aviso_home_view(request):
         if getattr(user, "condominio", None):
             avisos = avisos.filter(created_by__condominio=user.condominio)
 
-        # Se for morador, filtrar avisos de encomenda apenas da sua unidade
+        # Se for morador, filtrar avisos de encomenda apenas das suas unidades
         is_morador = user.groups.filter(name="Moradores").exists()
-        if is_morador and getattr(user, "unidade", None):
+        user_unidades = list(user.unidades.all()) if is_morador else []
+        if is_morador and user_unidades:
             from ...models import Encomenda
 
             has_pending = Encomenda.objects.filter(
-                unidade_id=user.unidade_id, retirado_em__isnull=True
+                unidade__in=user_unidades, retirado_em__isnull=True
             ).exists()
 
             if has_pending:
+                unit_q = Q()
+                for unidade in user_unidades:
+                    unit_q |= Q(
+                        titulo__icontains=unidade.identificacao_completa
+                    )
                 avisos = avisos.filter(
-                    Q(titulo__icontains="Nova encomenda")
-                    & Q(titulo__icontains=user.unidade.identificacao_completa)
+                    (Q(titulo__icontains="Nova encomenda") & unit_q)
                     | ~Q(titulo__icontains="Nova encomenda")
                 )
             else:

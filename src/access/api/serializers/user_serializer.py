@@ -9,14 +9,16 @@ class UserSerializer(serializers.ModelSerializer):
     condominio_id = serializers.IntegerField(
         source="condominio.id", read_only=True
     )
-    unidade_identificacao = serializers.CharField(
-        source="unidade.identificacao_completa",
-        read_only=True,
-        allow_null=True,
-    )
-    unidade_id = serializers.IntegerField(
-        write_only=True, required=False, allow_null=True
-    )
+    unidade_identificacao = serializers.SerializerMethodField(read_only=True)
+    unidade_id = serializers.SerializerMethodField(read_only=True)
+
+    def get_unidade_identificacao(self, obj):
+        first = obj.unidades.first()
+        return first.identificacao_completa if first else None
+
+    def get_unidade_id(self, obj):
+        first = obj.unidades.first()
+        return str(first.id) if first else None
 
     class Meta:
         model = User
@@ -35,7 +37,6 @@ class UserSerializer(serializers.ModelSerializer):
             "condominio",
             "condominio_nome",
             "condominio_id",
-            "unidade",
             "unidade_identificacao",
             "unidade_id",
         )

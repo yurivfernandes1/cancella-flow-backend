@@ -16,14 +16,17 @@ class UserListSerializer(serializers.ModelSerializer):
     condominio_id = serializers.IntegerField(
         source="condominio.id", read_only=True
     )
-    unidade_identificacao = serializers.CharField(
-        source="unidade.identificacao_completa",
-        read_only=True,
-        allow_null=True,
-    )
-    unidade_id = serializers.IntegerField(
-        source="unidade.id", read_only=True, allow_null=True
-    )
+    unidade_identificacao = serializers.SerializerMethodField(read_only=True)
+    unidade_id = serializers.SerializerMethodField(read_only=True)
+
+    def get_unidade_identificacao(self, obj):
+        first = obj.unidades.first()
+        return first.identificacao_completa if first else None
+
+    def get_unidade_id(self, obj):
+        first = obj.unidades.first()
+        return str(first.id) if first else None
+
     groups = GroupSerializer(many=True, read_only=True)
 
     class Meta:

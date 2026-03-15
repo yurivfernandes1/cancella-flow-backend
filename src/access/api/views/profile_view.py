@@ -39,10 +39,19 @@ class ProfileView(APIView):
                 "condominio_nome": user.condominio.nome
                 if user.condominio
                 else None,
-                "unidade_id": user.unidade.id if user.unidade else None,
-                "unidade_identificacao": user.unidade.identificacao_completa
-                if user.unidade
+                "unidade_id": user.unidades.values_list(
+                    "id", flat=True
+                ).first(),
+                "unidade_identificacao": user.unidades.first().identificacao_completa
+                if user.unidades.exists()
                 else None,
+                "unidades": [
+                    {
+                        "id": str(u.id),
+                        "identificacao_completa": u.identificacao_completa,
+                    }
+                    for u in user.unidades.all()
+                ],
             }
         )
 
@@ -128,23 +137,49 @@ class ProfileView(APIView):
                 else:
                     target_user.condominio = None
 
-            # Atualizar unidade se fornecida
-            if "unidade_id" in request.data:
-                if request.data["unidade_id"]:
-                    from cadastros.models import Unidade
+            # Adicionar unidade (add_unidade_id ou unidade_id como alias retrocompatível)
+            # Nota: unidade_id:null não é mais suportado — use remove_unidade_id
+            add_id = request.data.get("add_unidade_id") or (
+                request.data.get("unidade_id")
+                if request.data.get("unidade_id")
+                else None
+            )
+            if add_id:
+                from cadastros.models import Unidade
+
+                try:
+                    unidade = Unidade.objects.get(id=add_id)
+                    target_user.unidades.add(unidade)
+                except Unidade.DoesNotExist:
+                    return Response(
+                        {"error": "Unidade não encontrada"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            # Remover unidade específica
+            if (
+                "remove_unidade_id" in request.data
+                and request.data["remove_unidade_id"]
+            ):
+                from cadastros.models import Unidade
+
+                try:
+                    unidade = Unidade.objects.get(
+                        id=request.data["remove_unidade_id"]
+                    )
+                    target_user.unidades.remove(unidade)
+                except Unidade.DoesNotExist:
+                    pass  # silencioso — pode ter sido removida antes
+
+                # Se não sobrou nenhuma unidade, remover automaticamente do grupo Moradores
+                if not target_user.unidades.exists():
+                    from django.contrib.auth.models import Group
 
                     try:
-                        unidade = Unidade.objects.get(
-                            id=request.data["unidade_id"]
-                        )
-                        target_user.unidade = unidade
-                    except Unidade.DoesNotExist:
-                        return Response(
-                            {"error": "Unidade não encontrada"},
-                            status=status.HTTP_400_BAD_REQUEST,
-                        )
-                else:
-                    target_user.unidade = None
+                        grupo_moradores = Group.objects.get(name="Moradores")
+                        target_user.groups.remove(grupo_moradores)
+                    except Group.DoesNotExist:
+                        pass
 
             # Gerenciar grupo Moradores via campo is_morador
             if "is_morador" in request.data:

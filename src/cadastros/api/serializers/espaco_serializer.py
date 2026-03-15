@@ -179,13 +179,12 @@ class EspacoReservaListSerializer(serializers.ModelSerializer):
         ]
 
     def get_unidade(self, obj):
-        # Retornar a unidade do morador se existir
+        # Retornar a primeira unidade do morador se existir
         morador = getattr(obj, "morador", None)
         if morador is None:
             return "-"
 
-        # User possui FK 'unidade' no model (pode ser None)
-        unidade = getattr(morador, "unidade", None)
+        unidade = morador.unidades.first()
         if unidade:
             return unidade.identificacao_completa
         return "-"

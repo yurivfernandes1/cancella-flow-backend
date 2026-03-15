@@ -106,9 +106,11 @@ class UserCreateView(APIView):
                     is_staff=request.data.get("is_staff", False),
                     is_active=True,
                     condominio=condominio,
-                    unidade=unidade,
                     created_by=request.user,
                 )
+
+                if unidade:
+                    user.unidades.add(unidade)
 
                 # Associar ao grupo correto baseado no tipo
                 # Se for 'sindico_morador', adicionar aos dois grupos

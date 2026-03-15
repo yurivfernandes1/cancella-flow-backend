@@ -1,10 +1,11 @@
+import uuid
+
 from app.utils.validators import (
     format_cpf,
     format_phone,
     validate_cpf,
     validate_phone,
 )
-import uuid
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -57,14 +58,12 @@ class User(AbstractUser):
         related_name="usuarios",
         verbose_name="Condomínio",
     )
-    unidade = models.ForeignKey(
+    unidades = models.ManyToManyField(
         "cadastros.Unidade",
-        null=True,
         blank=True,
-        on_delete=models.SET_NULL,
-        related_name="morador",
-        verbose_name="Unidade",
-        help_text="Unidade onde o morador reside",
+        related_name="moradores",
+        verbose_name="Unidades",
+        help_text="Unidades onde o morador reside",
     )
 
     def save(self, *args, **kwargs):

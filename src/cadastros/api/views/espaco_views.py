@@ -466,7 +466,7 @@ def espaco_reserva_list_view(request):
             return Response([], status=status.HTTP_200_OK)
 
         reservas = EspacoReserva.objects.select_related(
-            "espaco", "morador", "morador__unidade"
+            "espaco", "morador"
         ).all()
 
         # Filtrar por condomínio do contexto do registro para perfis não-staff
@@ -730,7 +730,7 @@ def espaco_reserva_hoje_view(request):
         hoje = date.today()
 
         reservas = EspacoReserva.objects.select_related(
-            "espaco", "morador", "morador__unidade"
+            "espaco", "morador"
         ).filter(data_reserva=hoje, status="confirmada")
 
         # Filtrar por condomínio do contexto do registro para síndico/portaria (exceto staff)

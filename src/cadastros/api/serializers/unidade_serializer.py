@@ -33,8 +33,8 @@ class UnidadeSerializer(serializers.ModelSerializer):
         """Retorna o nome do morador associado à unidade via related_name"""
         try:
             # 'morador' é a relação reversa de User.unidade (RelatedManager)
-            if hasattr(obj, "morador") and obj.morador is not None:
-                first = obj.morador.all().first()
+            if hasattr(obj, "moradores") and obj.moradores is not None:
+                first = obj.moradores.all().first()
                 if first:
                     return first.full_name
         except Exception:
@@ -64,8 +64,8 @@ class UnidadeListSerializer(serializers.ModelSerializer):
     def get_morador_nome(self, obj):
         """Retorna o nome do morador associado à unidade via related_name"""
         try:
-            if hasattr(obj, "morador") and obj.morador is not None:
-                first = obj.morador.all().first()
+            if hasattr(obj, "moradores") and obj.moradores is not None:
+                first = obj.moradores.all().first()
                 if first:
                     return first.full_name
         except Exception:
@@ -75,7 +75,7 @@ class UnidadeListSerializer(serializers.ModelSerializer):
     def get_moradores(self, obj):
         """Retorna lista de moradores vinculados à unidade com dados relevantes"""
         try:
-            if not (hasattr(obj, "morador") and obj.morador is not None):
+            if not (hasattr(obj, "moradores") and obj.moradores is not None):
                 return []
             return [
                 {
@@ -91,7 +91,7 @@ class UnidadeListSerializer(serializers.ModelSerializer):
                     "unidade_id": obj.id,
                     "unidade_identificacao": obj.identificacao_completa,
                 }
-                for m in obj.morador.all()
+                for m in obj.moradores.all()
             ]
         except Exception:
             return []
