@@ -7,7 +7,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from ...models import ConvidadoLista, ListaConvidados
+from ...models import ConvidadoLista, ListaConvidados, Visitante
 from ..serializers.lista_convidados_serializer import (
     ConvidadoListaSerializer,
     ListaConvidadosSerializer,
@@ -852,8 +852,37 @@ def confirmar_por_qrcode_view(request):
             "lista", "lista__morador"
         ).get(qr_token=token)
     except ConvidadoLista.DoesNotExist:
+        # Tentar como token de visitante
+        try:
+            import uuid as _uuid
+            visitante = Visitante.objects.select_related("morador").get(qr_token=token)
+        except (Visitante.DoesNotExist, Exception):
+            return Response(
+                {"error": "QR code inválido."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        from django.utils import timezone as tz
+
+        morador_nome = (
+            getattr(visitante.morador, "full_name", None)
+            or visitante.morador.get_full_name()
+            or visitante.morador.username
+        )
+
+        # Invalidar token após uso (exceto visitante permanente)
+        if not visitante.is_permanente:
+            visitante.qr_token = _uuid.uuid4()
+            visitante.save(update_fields=["qr_token"])
+
         return Response(
-            {"error": "QR code inválido."}, status=status.HTTP_404_NOT_FOUND
+            {
+                "success": True,
+                "nome": visitante.nome,
+                "lista": "Visitante",
+                "morador_nome": morador_nome,
+                "is_visitante": True,
+                "is_permanente": visitante.is_permanente,
+            }
         )
     except Exception:
         return Response(

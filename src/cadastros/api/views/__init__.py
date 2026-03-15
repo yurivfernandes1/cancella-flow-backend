@@ -100,6 +100,7 @@ from .visitante_views import (
     visitante_create_view,
     visitante_delete_view,
     visitante_detail_view,
+    visitante_enviar_qrcode_view,
     visitante_list_view,
     visitante_update_view,
 )
@@ -158,6 +159,7 @@ __all__ = [
     "visitante_detail_view",
     "visitante_update_view",
     "visitante_delete_view",
+    "visitante_enviar_qrcode_view",
     "aviso_list_view",
     "aviso_create_view",
     "aviso_detail_view",
