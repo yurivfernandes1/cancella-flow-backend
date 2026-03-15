@@ -264,7 +264,9 @@ def listas_convidados_view(request):
         search = request.query_params.get("search", "").strip()
         if _is_sindico_ou_portaria(user):
             qs = (
-                ListaConvidados.objects.all()
+                ListaConvidados.objects.filter(
+                    morador__condominio=user.condominio
+                )
                 .prefetch_related("convidados")
                 .order_by("-created_on")
             )
@@ -370,8 +372,12 @@ def lista_convidados_detail_view(request, lista_pk):
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    # Permissão de leitura: dono ou síndico/portaria
-    pode_ler = (lista.morador == user) or _is_sindico_ou_portaria(user)
+    # Permissão de leitura: dono ou síndico/portaria do mesmo condomínio
+    mesmo_condominio = (
+        _is_sindico_ou_portaria(user)
+        and lista.morador.condominio_id == user.condominio_id
+    )
+    pode_ler = (lista.morador == user) or mesmo_condominio
     # Permissão de escrita: apenas o dono
     pode_escrever = lista.morador == user
 
