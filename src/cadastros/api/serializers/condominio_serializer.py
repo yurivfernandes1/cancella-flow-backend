@@ -53,7 +53,6 @@ class CondominioSerializer(serializers.ModelSerializer):
 
     def get_logo_url(self, obj):
         """Retorna a URL completa da logo"""
-        # Prioriza logo armazenada no banco (campos logo_db_* no próprio modelo)
         request = self.context.get("request")
         if getattr(obj, "logo_db_data", None):
             if request:
@@ -128,7 +127,6 @@ class CondominioSerializer(serializers.ModelSerializer):
 
         partes = []
 
-        # Logradouro + número
         logradouro = dados.get("street", "")
         if logradouro:
             endereco_base = (
@@ -136,16 +134,13 @@ class CondominioSerializer(serializers.ModelSerializer):
             )
             partes.append(endereco_base)
 
-        # Complemento
         if obj.complemento:
             partes.append(obj.complemento)
 
-        # Bairro
         bairro = dados.get("neighborhood", "")
         if bairro:
             partes.append(bairro)
 
-        # Cidade - Estado
         cidade = dados.get("city", "")
         estado = dados.get("state", "")
         if cidade and estado:
@@ -153,7 +148,6 @@ class CondominioSerializer(serializers.ModelSerializer):
         elif cidade:
             partes.append(cidade)
 
-        # CEP
         cep_formatado = (
             f"{obj.cep[:5]}-{obj.cep[5:]}" if len(obj.cep) == 8 else obj.cep
         )
@@ -162,7 +156,6 @@ class CondominioSerializer(serializers.ModelSerializer):
         return ", ".join(partes)
 
     def get_sindico_nome(self, obj):
-        # Busca o síndico através do relacionamento reverso
         sindico = obj.usuarios.filter(groups__name="Síndicos").first()
         if sindico:
             return (
@@ -173,19 +166,16 @@ class CondominioSerializer(serializers.ModelSerializer):
         return None
 
     def get_sindico_id(self, obj):
-        # Busca o síndico através do relacionamento reverso
         sindico = obj.usuarios.filter(groups__name="Síndicos").first()
-        return sindico.id if sindico else None
+        return str(sindico.id) if sindico else None
 
     def validate_cnpj(self, value):
         if value:
-            # Remove todos os caracteres não numéricos
             return "".join(filter(str.isdigit, value))
         return value
 
     def validate_telefone(self, value):
         if value:
-            # Remove todos os caracteres não numéricos
             return "".join(filter(str.isdigit, value))
         return value
 
@@ -205,6 +195,8 @@ class CondominioSerializer(serializers.ModelSerializer):
 
 class CondominioListSerializer(serializers.ModelSerializer):
     sindico_nome = serializers.SerializerMethodField(read_only=True)
+    sindico_id = serializers.SerializerMethodField(read_only=True)
+    sindicos = serializers.SerializerMethodField(read_only=True)
     endereco_completo = serializers.SerializerMethodField(read_only=True)
     logo_url = serializers.SerializerMethodField(read_only=True)
 
@@ -221,12 +213,13 @@ class CondominioListSerializer(serializers.ModelSerializer):
             "telefone",
             "logo_url",
             "sindico_nome",
+            "sindico_id",
+            "sindicos",
             "is_ativo",
         ]
 
     def get_logo_url(self, obj):
         """Retorna a URL completa da logo"""
-        # Prioriza logo armazenada no banco (campos logo_db_* no próprio modelo)
         request = self.context.get("request")
         if getattr(obj, "logo_db_data", None):
             if request:
@@ -269,7 +262,6 @@ class CondominioListSerializer(serializers.ModelSerializer):
 
         partes = []
 
-        # Logradouro + número
         logradouro = dados.get("street", "")
         if logradouro:
             endereco_base = (
@@ -277,16 +269,13 @@ class CondominioListSerializer(serializers.ModelSerializer):
             )
             partes.append(endereco_base)
 
-        # Complemento
         if obj.complemento:
             partes.append(obj.complemento)
 
-        # Bairro
         bairro = dados.get("neighborhood", "")
         if bairro:
             partes.append(bairro)
 
-        # Cidade - Estado
         cidade = dados.get("city", "")
         estado = dados.get("state", "")
         if cidade and estado:
@@ -294,7 +283,6 @@ class CondominioListSerializer(serializers.ModelSerializer):
         elif cidade:
             partes.append(cidade)
 
-        # CEP
         cep_formatado = (
             f"{obj.cep[:5]}-{obj.cep[5:]}" if len(obj.cep) == 8 else obj.cep
         )
@@ -303,7 +291,6 @@ class CondominioListSerializer(serializers.ModelSerializer):
         return ", ".join(partes)
 
     def get_sindico_nome(self, obj):
-        # Busca o síndico através do relacionamento reverso
         sindico = obj.usuarios.filter(groups__name="Síndicos").first()
         if sindico:
             return (
@@ -312,3 +299,20 @@ class CondominioListSerializer(serializers.ModelSerializer):
                 else f"{sindico.first_name} {sindico.last_name}".strip()
             )
         return None
+
+    def get_sindico_id(self, obj):
+        sindico = obj.usuarios.filter(groups__name="Síndicos").first()
+        return str(sindico.id) if sindico else None
+
+    def get_sindicos(self, obj):
+        return [
+            {
+                "id": str(s.id),
+                "full_name": s.full_name or f"{s.first_name} {s.last_name}".strip(),
+                "email": s.email or "",
+                "username": s.username,
+                "phone": s.phone or "",
+                "is_active": s.is_active,
+            }
+            for s in obj.usuarios.filter(groups__name="Síndicos").order_by("full_name")
+        ]

@@ -232,7 +232,7 @@ def sindico_stats_view(request):
         # 4. ENCOMENDAS PENDENTES (não retiradas) com cor por idade da mais antiga
         try:
             encomendas_qs = Encomenda.objects.filter(
-                unidade__condominio_id=condominio_id, retirado_em__isnull=True
+                created_by__condominio_id=condominio_id, retirado_em__isnull=True
             ).order_by("created_on")
 
             encomendas_pendentes_total = encomendas_qs.count()
@@ -280,7 +280,7 @@ def sindico_stats_view(request):
         proximos_7_dias = hoje_date + timedelta(days=7)
         try:
             reservas_proximas = EspacoReserva.objects.filter(
-                espaco__condominio_id=condominio_id,
+                morador__condominio_id=condominio_id,
                 data_reserva__gte=hoje_date,
                 data_reserva__lte=proximos_7_dias,
                 status="confirmada",
