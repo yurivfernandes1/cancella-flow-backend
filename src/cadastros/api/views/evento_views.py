@@ -59,22 +59,23 @@ def evento_list_view(request):
                 created_by__condominio_id=user.condominio_id
             )
 
+        # Parâmetro para síndico/staff: incluir eventos passados
+        incluir_passados = (
+            request.GET.get("incluir_passados", "false").lower() == "true"
+        )
+
         # Filtrar por perfil
         if is_sindico or user.is_staff:
-            # Síndicos veem todos
-            pass
+            # Síndicos veem eventos atuais e futuros por padrão;
+            # com incluir_passados=true, veem todos
+            if not incluir_passados:
+                eventos = eventos.filter(datetime_fim__gte=now_dt)
         elif is_portaria:
-            # Portaria vê eventos de hoje e amanhã
-            hoje_inicio = now_dt.replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
-            amanha_fim = hoje_inicio + timezone.timedelta(days=2)
-            eventos = eventos.filter(
-                datetime_inicio__lt=amanha_fim, datetime_fim__gte=hoje_inicio
-            )
+            # Portaria vê eventos atuais e futuros
+            eventos = eventos.filter(datetime_fim__gte=now_dt)
         elif is_morador:
-            # Moradores veem eventos futuros (a partir de agora)
-            eventos = eventos.filter(datetime_inicio__gte=now_dt)
+            # Moradores veem eventos atuais e futuros
+            eventos = eventos.filter(datetime_fim__gte=now_dt)
         else:
             # Sem permissão
             eventos = Evento.objects.none()
