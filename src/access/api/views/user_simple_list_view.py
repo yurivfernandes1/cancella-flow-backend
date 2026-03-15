@@ -56,5 +56,12 @@ class UserSimpleListView(generics.ListAPIView):
                     condominio=self.request.user.condominio
                 )
 
+        # Filtrar por busca (nome ou username)
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(full_name__icontains=search) | Q(username__icontains=search)
+            )
+
         # Evitar duplicados caso o usuário esteja em mais de um grupo
         return queryset.distinct().order_by("full_name")
