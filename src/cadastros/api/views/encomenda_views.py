@@ -106,23 +106,24 @@ def encomenda_list_view(request):
         # Controle de acesso por grupo
         is_portaria = user.groups.filter(name="Portaria").exists()
         is_morador = user.groups.filter(name="Moradores").exists()
+        is_sindico = user.groups.filter(name="Síndicos").exists()
 
-        # Filtrar por condomínio do usuário para Portaria (exceto staff)
+        # Filtrar por condomínio do usuário para Portaria e Síndicos (exceto staff)
         if (
-            is_portaria
+            (is_portaria or is_sindico)
             and not user.is_staff
             and getattr(user, "condominio_id", None)
         ):
             encomendas = encomendas.filter(
                 created_by__condominio_id=user.condominio_id
             )
-        elif is_morador and not (user.is_staff or is_portaria):
+        elif is_morador and not (user.is_staff or is_portaria or is_sindico):
             # Moradores veem apenas encomendas da sua unidade
             if user.unidade_id:
                 encomendas = encomendas.filter(unidade_id=user.unidade_id)
             else:
                 encomendas = Encomenda.objects.none()
-        elif not (user.is_staff or is_portaria):
+        elif not (user.is_staff or is_portaria or is_sindico):
             # Usuários sem permissão não veem nada
             encomendas = Encomenda.objects.none()
 
@@ -359,15 +360,16 @@ def encomenda_badge_view(request):
 
         is_portaria = user.groups.filter(name="Portaria").exists()
         is_morador = user.groups.filter(name="Moradores").exists()
+        is_sindico = user.groups.filter(name="Síndicos").exists()
 
-        if is_morador and not (user.is_staff or is_portaria):
+        if is_morador and not (user.is_staff or is_portaria or is_sindico):
             # Morador: apenas encomendas da própria unidade
             if user.unidade_id:
                 qs = qs.filter(unidade_id=user.unidade_id)
             else:
                 qs = qs.none()
         else:
-            # Staff/Portaria: pode filtrar por unidade_id opcionalmente
+            # Staff/Portaria/Síndico: pode filtrar por unidade_id opcionalmente
             unidade_id = request.GET.get("unidade_id")
             if unidade_id:
                 qs = qs.filter(unidade_id=unidade_id)

@@ -59,12 +59,11 @@ def unidade_list_view(request):
         is_portaria = user.groups.filter(name="Portaria").exists()
         is_morador = user.groups.filter(name="Moradores").exists()
 
-        # Filtrar por condomínio do usuário (considerando unidades sem morador)
+        # Filtrar por condomínio: apenas unidades criadas por usuários do mesmo condomínio
         if hasattr(user, "condominio_id") and user.condominio_id:
             unidades = unidades.filter(
-                Q(morador__condominio_id=user.condominio_id)
-                | Q(created_by__condominio_id=user.condominio_id)
-            ).distinct()
+                created_by__condominio_id=user.condominio_id
+            )
 
         if is_morador and not (user.is_staff or is_sindico or is_portaria):
             # Moradores veem apenas suas próprias unidades

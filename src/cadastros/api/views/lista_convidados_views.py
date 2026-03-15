@@ -18,6 +18,10 @@ def _is_morador(user):
     return user.groups.filter(name="Moradores").exists()
 
 
+def _pode_criar_lista(user):
+    return user.groups.filter(name__in=["Moradores", "Síndicos"]).exists()
+
+
 def _enviar_qrcode_email(convidado, lista):
     """
     Envia o QR code de acesso por e-mail ao convidado.
@@ -285,10 +289,12 @@ def listas_convidados_view(request):
         serializer = ListaConvidadosSerializer(qs, many=True)
         return Response(serializer.data)
 
-    # POST — apenas moradores criam listas
-    if not _is_morador(user):
+    # POST — moradores e síndicos podem criar listas
+    if not _pode_criar_lista(user):
         return Response(
-            {"error": "Apenas moradores podem criar listas de convidados."},
+            {
+                "error": "Apenas moradores ou síndicos podem criar listas de convidados."
+            },
             status=status.HTTP_403_FORBIDDEN,
         )
 
