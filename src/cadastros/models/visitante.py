@@ -1,4 +1,5 @@
 import re
+import uuid
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -49,6 +50,19 @@ class Visitante(models.Model):
         max_length=20,
         verbose_name="Documento",
         help_text="CPF, RG ou outro documento de identificação",
+    )
+    email = models.EmailField(
+        null=True,
+        blank=True,
+        verbose_name="E-mail",
+        help_text="E-mail do visitante para envio do QR Code (opcional)",
+    )
+    qr_token = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        verbose_name="Token QR",
+        help_text="Token único utilizado para geração do QR Code de entrada",
     )
     placa_veiculo = models.CharField(
         max_length=8,
