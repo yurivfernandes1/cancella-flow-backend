@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from django.db.models import Q
 from django.utils import timezone
@@ -203,6 +204,64 @@ def ocorrencia_update_view(request, pk):
                     },
                     status=status.HTTP_403_FORBIDDEN,
                 )
+            requested_status = request.data.get("status")
+            motivo_reabertura = (
+                request.data.get("motivo_reabertura") or ""
+            ).strip()
+
+            # Morador/Portaria podem reabrir ocorrencia resolvida, com justificativa,
+            # dentro da janela de 5 dias após a resolução.
+            if requested_status == Ocorrencia.STATUS_ABERTA:
+                if ocorrencia.status != Ocorrencia.STATUS_RESOLVIDA:
+                    return Response(
+                        {
+                            "error": "Apenas ocorrências resolvidas podem ser reabertas."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                if not motivo_reabertura:
+                    return Response(
+                        {
+                            "error": "Informe a justificativa para reabrir a ocorrência."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                referencia_resolucao = (
+                    ocorrencia.respondido_em or ocorrencia.updated_at
+                )
+                if not referencia_resolucao:
+                    return Response(
+                        {
+                            "error": "Não foi possível validar a data de resolução da ocorrência."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                if timezone.now() - referencia_resolucao > timedelta(days=5):
+                    return Response(
+                        {
+                            "error": "A ocorrência só pode ser reaberta até 5 dias após a resolução."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                ocorrencia.status = Ocorrencia.STATUS_ABERTA
+                ocorrencia.motivo_reabertura = motivo_reabertura
+                ocorrencia.reaberto_por = user
+                ocorrencia.reaberto_em = timezone.now()
+                ocorrencia.save(
+                    update_fields=[
+                        "status",
+                        "motivo_reabertura",
+                        "reaberto_por",
+                        "reaberto_em",
+                        "updated_at",
+                    ]
+                )
+                return Response(OcorrenciaSerializer(ocorrencia).data)
+
             if ocorrencia.status != Ocorrencia.STATUS_ABERTA:
                 return Response(
                     {

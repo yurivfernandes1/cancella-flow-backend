@@ -41,6 +41,15 @@ class Ocorrencia(models.Model):
         related_name="ocorrencias_respondidas",
     )
     respondido_em = models.DateTimeField(null=True, blank=True)
+    motivo_reabertura = models.TextField(null=True, blank=True)
+    reaberto_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ocorrencias_reabertas",
+    )
+    reaberto_em = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

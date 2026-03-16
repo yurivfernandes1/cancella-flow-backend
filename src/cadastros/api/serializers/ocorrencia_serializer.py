@@ -21,6 +21,9 @@ class OcorrenciaSerializer(serializers.ModelSerializer):
             "respondido_por",
             "respondido_por_nome",
             "respondido_em",
+            "motivo_reabertura",
+            "reaberto_por",
+            "reaberto_em",
             "created_at",
             "updated_at",
         ]
@@ -31,6 +34,8 @@ class OcorrenciaSerializer(serializers.ModelSerializer):
             "respondido_por",
             "respondido_por_nome",
             "respondido_em",
+            "reaberto_por",
+            "reaberto_em",
             "created_at",
             "updated_at",
         ]
@@ -61,4 +66,4 @@ class OcorrenciaCreateSerializer(serializers.ModelSerializer):
 class OcorrenciaRespostaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ocorrencia
-        fields = ["resposta", "status"]
+        fields = ["resposta", "status", "motivo_reabertura"]
