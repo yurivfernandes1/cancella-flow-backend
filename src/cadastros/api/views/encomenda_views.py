@@ -73,13 +73,10 @@ def criar_aviso_encomenda(encomenda, criador):
 def encomenda_list_view(request):
     """
     Lista encomendas com paginação e busca.
-    Por padrão, retorna apenas encomendas NÃO entregues (sem data de retirada).
+    Retorna todas as encomendas conforme permissões e busca.
 
     Parâmetros opcionais:
     - search: busca em vários campos
-    - incluir_entregues: "true" para incluir encomendas já entregues
-    - unidade_antiga: ID da unidade para buscar encomendas antigas (entregues)
-    - codigo_antiga: código de rastreio para buscar encomenda antiga específica
 
     Controle de acesso:
     - Portaria/Staff: vê todas as encomendas (filtradas pelo condomínio)
@@ -90,11 +87,6 @@ def encomenda_list_view(request):
 
         # Parâmetros de busca
         search = request.GET.get("search", "")
-        incluir_entregues = (
-            request.GET.get("incluir_entregues", "false").lower() == "true"
-        )
-        unidade_antiga = request.GET.get("unidade_antiga", "")
-        codigo_antiga = request.GET.get("codigo_antiga", "")
 
         encomendas = (
             Encomenda.objects.select_related("unidade")
@@ -126,23 +118,6 @@ def encomenda_list_view(request):
         elif not (user.is_staff or is_portaria or is_sindico):
             # Usuários sem permissão não veem nada
             encomendas = Encomenda.objects.none()
-
-        # FILTRO PRINCIPAL: Por padrão, mostrar apenas não entregues
-        # Exceção: se buscar por unidade_antiga ou codigo_antiga, incluir entregues
-        if unidade_antiga:
-            # Buscar encomendas entregues de uma unidade específica
-            encomendas = encomendas.filter(
-                unidade_id=unidade_antiga, retirado_em__isnull=False
-            )
-        elif codigo_antiga:
-            # Buscar encomenda específica pelo código (entregue ou não)
-            encomendas = encomendas.filter(
-                codigo_rastreio__icontains=codigo_antiga
-            )
-        elif not incluir_entregues:
-            # Padrão: apenas não entregues
-            encomendas = encomendas.filter(retirado_em__isnull=True)
-        # Se incluir_entregues=true, não aplica filtro (mostra todas)
 
         if search:
             encomendas = encomendas.filter(
@@ -263,25 +238,191 @@ def encomenda_detail_view(request, pk):
 def encomenda_update_view(request, pk):
     """
     Atualiza uma encomenda.
-    Apenas Portaria e Administradores podem editar.
+    - Portaria/Administradores: editam e alteram status da encomenda
+    - Morador: pode contestar recebimento com observação
     """
     try:
         user = request.user
         is_portaria = user.groups.filter(name="Portaria").exists()
+        is_morador = user.groups.filter(name="Moradores").exists()
+        is_sindico = user.groups.filter(name="Síndicos").exists()
 
-        if not (user.is_staff or is_portaria):
+        encomenda = Encomenda.objects.get(pk=pk)
+        was_contestada_aberta = bool(
+            encomenda.contestado_em and not encomenda.contestacao_resolvida
+        )
+
+        if is_morador and not (user.is_staff or is_portaria):
+            if not user.unidades.filter(id=encomenda.unidade_id).exists():
+                return Response(
+                    {
+                        "error": "Você não tem permissão para contestar esta encomenda."
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            observacao = (
+                request.data.get("contestacao_observacao") or ""
+            ).strip()
+            contestar = bool(request.data.get("contestar_recebimento"))
+
+            if not contestar:
+                return Response(
+                    {
+                        "error": "Ação inválida para morador. Use contestar_recebimento=true."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not encomenda.retirado_em:
+                return Response(
+                    {
+                        "error": "Só é possível contestar encomendas marcadas como retiradas."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not observacao:
+                return Response(
+                    {
+                        "error": "Informe a observação para contestar o recebimento."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            encomenda.contestacao_observacao = observacao
+            encomenda.contestado_por = user
+            encomenda.contestado_em = timezone.now()
+            encomenda.contestacao_resolvida = False
+            encomenda.contestacao_resposta = None
+            encomenda.contestacao_respondido_por = None
+            encomenda.contestacao_respondido_em = None
+            encomenda.updated_by = user
+            encomenda.save(
+                update_fields=[
+                    "contestacao_observacao",
+                    "contestado_por",
+                    "contestado_em",
+                    "contestacao_resolvida",
+                    "contestacao_resposta",
+                    "contestacao_respondido_por",
+                    "contestacao_respondido_em",
+                    "updated_by",
+                    "updated_on",
+                ]
+            )
+            return Response(EncomendaSerializer(encomenda).data)
+
+        if not (user.is_staff or is_portaria or is_sindico):
             return Response(
-                {"error": "Apenas Portaria pode editar encomendas."},
+                {
+                    "error": "Apenas Portaria e Síndicos podem editar encomendas."
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        encomenda = Encomenda.objects.get(pk=pk)
+        data = request.data.copy()
+
+        status_encomenda = data.get("status_encomenda")
+
+        if status_encomenda == "contestada":
+            return Response(
+                {"error": "A encomenda só pode ser contestada pelo morador."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if is_portaria and was_contestada_aberta:
+            return Response(
+                {
+                    "error": "Encomendas contestadas só podem ser alteradas pelo síndico."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if status_encomenda == "pendente":
+            data["retirado_em"] = None
+            data["retirado_por"] = ""
+        elif status_encomenda == "retirada":
+            if not data.get("retirado_por"):
+                if is_portaria:
+                    return Response(
+                        {
+                            "error": "Informe quem retirou a encomenda para marcar como retirada."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                data["retirado_por"] = user.full_name or user.username
+            if not encomenda.retirado_em:
+                data["retirado_em"] = timezone.now().isoformat()
+
+        resposta_contestacao = (data.get("contestacao_resposta") or "").strip()
+        if (
+            is_sindico
+            and was_contestada_aberta
+            and status_encomenda
+            in {
+                "pendente",
+                "retirada",
+            }
+        ):
+            if not resposta_contestacao:
+                return Response(
+                    {
+                        "error": "Síndico deve informar uma resposta ao resolver a contestação."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            data["contestacao_resolvida"] = True
+
+        if not is_sindico and str(
+            data.get("resolver_contestacao", "")
+        ).lower() in {
+            "1",
+            "true",
+            "sim",
+        }:
+            return Response(
+                {"error": "Somente o síndico pode resolver contestações."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if str(data.get("resolver_contestacao", "")).lower() in {
+            "1",
+            "true",
+            "sim",
+        }:
+            data["contestacao_resolvida"] = True
+
         serializer = EncomendaSerializer(
-            encomenda, data=request.data, partial=(request.method == "PATCH")
+            encomenda, data=data, partial=(request.method == "PATCH")
         )
 
         if serializer.is_valid():
             encomenda = serializer.save(updated_by=user)
+
+            if is_sindico and (
+                (
+                    was_contestada_aberta
+                    and status_encomenda in {"pendente", "retirada"}
+                )
+                or str(data.get("resolver_contestacao", "")).lower()
+                in {"1", "true", "sim"}
+            ):
+                if resposta_contestacao:
+                    encomenda.contestacao_resposta = resposta_contestacao
+                encomenda.contestacao_resolvida = True
+                encomenda.contestacao_respondido_por = user
+                encomenda.contestacao_respondido_em = timezone.now()
+                encomenda.save(
+                    update_fields=[
+                        "contestacao_resposta",
+                        "contestacao_resolvida",
+                        "contestacao_respondido_por",
+                        "contestacao_respondido_em",
+                        "updated_on",
+                    ]
+                )
+
             return Response(EncomendaSerializer(encomenda).data)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

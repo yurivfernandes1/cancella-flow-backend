@@ -22,7 +22,7 @@ def aviso_list_view(request):
     Lista avisos com filtros e paginação.
     - Usuários veem apenas avisos do(s) seu(s) grupo(s) e do seu condomínio (se aplicável)
     - Admin (staff que não é Síndico) não recebe avisos
-    Suporta filtros: search, status, prioridade, grupo_id, vigente=1
+    Suporta filtros: search, status, prioridade, grupo_id
     """
     try:
         user = request.user
@@ -46,6 +46,8 @@ def aviso_list_view(request):
                 # (encomendas geradas pela portaria geram avisos para moradores)
                 avisos = avisos.exclude(titulo__icontains="Nova encomenda")
             else:
+                # Morador/Portaria: apenas avisos ativos (inclui ativos expirados)
+                avisos = avisos.filter(status=Aviso.STATUS_ATIVO)
                 # Demais perfis: filtrar por grupo E por condomínio do criador
                 grupos_ids = list(user.groups.values_list("id", flat=True))
                 avisos = avisos.filter(
@@ -104,16 +106,6 @@ def aviso_list_view(request):
             avisos = avisos.filter(
                 Q(grupo_id=grupo_id) | Q(grupos__id=grupo_id)
             )
-
-        vigente = request.GET.get("vigente")
-        if vigente in {"1", "true", "True"}:
-            from django.utils import timezone
-
-            now = timezone.now()
-            avisos = avisos.filter(
-                status=Aviso.STATUS_ATIVO,
-                data_inicio__lte=now,
-            ).filter(Q(data_fim__gte=now) | Q(data_fim__isnull=True))
 
         # Ordenação
         avisos = avisos.order_by("-prioridade", "-data_inicio").distinct()

@@ -66,6 +66,49 @@ class Encomenda(models.Model):
         verbose_name="Retirado em",
         help_text="Data e hora em que a encomenda foi retirada",
     )
+    contestacao_observacao = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="Observação da Contestação",
+        help_text="Observação do morador ao contestar o recebimento",
+    )
+    contestado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="encomendas_contestadas",
+        verbose_name="Contestado por",
+    )
+    contestado_em = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Contestado em",
+        help_text="Data e hora da contestação de recebimento",
+    )
+    contestacao_resolvida = models.BooleanField(
+        default=False,
+        verbose_name="Contestação resolvida",
+    )
+    contestacao_resposta = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="Resposta da Contestação",
+        help_text="Resposta do síndico para o morador sobre a contestação",
+    )
+    contestacao_respondido_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="encomendas_contestacoes_respondidas",
+        verbose_name="Contestação respondida por",
+    )
+    contestacao_respondido_em = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Contestação respondida em",
+    )
 
     class Meta:
         verbose_name = "Encomenda"
