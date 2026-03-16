@@ -1,5 +1,6 @@
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -201,7 +202,20 @@ def visitante_list_view(request):
 
         # Busca
         search = request.GET.get("search", "")
-        visitantes = Visitante.objects.select_related("morador").all()
+        incluir_passados_raw = request.GET.get("incluir_passados")
+        incluir_passados = None
+        if incluir_passados_raw is not None:
+            incluir_passados = str(incluir_passados_raw).lower() in {
+                "1",
+                "true",
+                "yes",
+                "on",
+            }
+        visitantes = (
+            Visitante.objects.select_related("morador")
+            .prefetch_related("morador__unidades")
+            .all()
+        )
 
         # Controle de acesso por grupo
         is_portaria = user.groups.filter(name="Portaria").exists()
@@ -229,6 +243,21 @@ def visitante_list_view(request):
                 | Q(documento__icontains=search)
                 | Q(morador__first_name__icontains=search)
                 | Q(morador__last_name__icontains=search)
+            )
+
+        # Quando incluir_passados=false:
+        # - permanentes sempre aparecem
+        # - não permanentes só aparecem se ainda não finalizaram a visita
+        #   (sem data_saida) e com data_entrada a partir de hoje
+        if incluir_passados is False:
+            hoje = timezone.localdate()
+            visitantes = visitantes.filter(
+                Q(is_permanente=True)
+                | Q(
+                    is_permanente=False,
+                    data_entrada__date__gte=hoje,
+                    data_saida__isnull=True,
+                )
             )
 
         # Ordenação

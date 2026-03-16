@@ -64,6 +64,33 @@ class VisitanteListSerializer(serializers.ModelSerializer):
         source="morador.full_name", read_only=True
     )
     esta_no_condominio = serializers.BooleanField(read_only=True)
+    morador_unidade_bloco = serializers.SerializerMethodField(read_only=True)
+    morador_unidade_numero = serializers.SerializerMethodField(read_only=True)
+    morador_unidade_identificacao = serializers.SerializerMethodField(
+        read_only=True
+    )
+
+    def _first_unidade(self, obj):
+        if not getattr(obj, "morador", None):
+            return None
+        try:
+            return obj.morador.unidades.first()
+        except Exception:
+            return None
+
+    def get_morador_unidade_bloco(self, obj):
+        unidade = self._first_unidade(obj)
+        return getattr(unidade, "bloco", None) if unidade else None
+
+    def get_morador_unidade_numero(self, obj):
+        unidade = self._first_unidade(obj)
+        return getattr(unidade, "numero", None) if unidade else None
+
+    def get_morador_unidade_identificacao(self, obj):
+        unidade = self._first_unidade(obj)
+        if not unidade:
+            return None
+        return getattr(unidade, "identificacao_completa", None)
 
     class Meta:
         model = Visitante
@@ -78,6 +105,9 @@ class VisitanteListSerializer(serializers.ModelSerializer):
             "data_saida",
             "is_permanente",
             "morador_nome",
+            "morador_unidade_bloco",
+            "morador_unidade_numero",
+            "morador_unidade_identificacao",
             "esta_no_condominio",
             "created_on",
             "updated_on",
