@@ -209,9 +209,9 @@ def ocorrencia_update_view(request, pk):
                 request.data.get("motivo_reabertura") or ""
             ).strip()
 
-            # Morador/Portaria podem reabrir ocorrencia resolvida, com justificativa,
-            # dentro da janela de 5 dias após a resolução.
-            if requested_status == Ocorrencia.STATUS_ABERTA:
+            # Morador/Portaria podem reabrir ocorrencia resolvida para
+            # em_andamento, com justificativa, dentro de 5 dias da resolução.
+            if requested_status == Ocorrencia.STATUS_EM_ANDAMENTO:
                 if ocorrencia.status != Ocorrencia.STATUS_RESOLVIDA:
                     return Response(
                         {
@@ -247,7 +247,7 @@ def ocorrencia_update_view(request, pk):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
-                ocorrencia.status = Ocorrencia.STATUS_ABERTA
+                ocorrencia.status = Ocorrencia.STATUS_EM_ANDAMENTO
                 ocorrencia.motivo_reabertura = motivo_reabertura
                 ocorrencia.reaberto_por = user
                 ocorrencia.reaberto_em = timezone.now()
