@@ -65,6 +65,23 @@ class User(AbstractUser):
         verbose_name="Unidades",
         help_text="Unidades onde o morador reside",
     )
+    foto_db_data = models.BinaryField(
+        null=True,
+        blank=True,
+        help_text="Foto de perfil do usuário armazenada em BLOB",
+    )
+    foto_db_content_type = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="Content-Type da foto de perfil",
+    )
+    foto_db_filename = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Nome do arquivo da foto de perfil",
+    )
 
     def save(self, *args, **kwargs):
         if self.full_name:

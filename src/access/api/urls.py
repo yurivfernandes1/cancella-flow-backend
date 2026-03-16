@@ -9,9 +9,34 @@ urlpatterns = [
     path("create/", views.UserCreateView.as_view(), name="create"),
     path("signup/", views.SignupView.as_view(), name="signup"),
     path(
+        "signup/condominio/<slug:slug>/",
+        views.SignupCondominioInfoView.as_view(),
+        name="signup-condominio-info",
+    ),
+    path(
+        "signup/condominio/<slug:slug>/logo/",
+        views.SignupCondominioLogoView.as_view(),
+        name="signup-condominio-logo",
+    ),
+    path(
+        "signup/invite-link/",
+        views.SignupInviteLinkView.as_view(),
+        name="signup-invite-link",
+    ),
+    path(
+        "signup/invite-link/qrcode/",
+        views.SignupInviteQrCodeView.as_view(),
+        name="signup-invite-link-qrcode",
+    ),
+    path(
         "check-username/<str:username>/",
         views.CheckUsernameView.as_view(),
         name="check-username",
+    ),
+    path(
+        "check-cpf/<str:cpf>/",
+        views.CheckCpfView.as_view(),
+        name="check-cpf",
     ),
     path(
         "change-password/",
@@ -19,6 +44,16 @@ urlpatterns = [
         name="change-password",
     ),
     path("profile/", views.ProfileView.as_view(), name="profile"),
+    path(
+        "profile/foto-db/upload/",
+        views.UserPhotoView.as_view(),
+        name="profile-photo-upload",
+    ),
+    path(
+        "profile/<uuid:user_id>/foto-db/",
+        views.UserPhotoView.as_view(),
+        name="profile-photo",
+    ),
     path(
         "profile/<uuid:user_id>/",
         views.ProfileView.as_view(),

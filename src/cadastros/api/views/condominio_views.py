@@ -60,7 +60,7 @@ def condominio_list_view(request):
 
         # Paginação
         page = int(request.GET.get("page", 1))
-        paginator = Paginator(condominios, 10)
+        paginator = Paginator(condominios, 12)
         page_obj = paginator.get_page(page)
 
         serializer = CondominioListSerializer(

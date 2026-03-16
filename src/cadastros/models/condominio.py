@@ -1,3 +1,6 @@
+import secrets
+import string
+
 from django.db import models
 
 
@@ -38,6 +41,21 @@ class Condominio(models.Model):
         null=True,
         verbose_name="Complemento",
         help_text="Complemento do endereço (opcional)",
+    )
+    signup_slug = models.SlugField(
+        max_length=120,
+        unique=True,
+        blank=True,
+        null=True,
+        verbose_name="Slug de cadastro",
+        help_text="Slug único usado no link de cadastro de moradores",
+    )
+    signup_token = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        verbose_name="Token de cadastro",
+        help_text="Token secreto para validar o link de cadastro de moradores",
     )
     logo = models.FileField(
         upload_to="condominios/logos/",
@@ -82,6 +100,26 @@ class Condominio(models.Model):
 
     def __str__(self):
         return self.nome
+
+    def ensure_signup_credentials(self, force_regenerate=False):
+        if force_regenerate or not self.signup_slug:
+            alphabet = string.ascii_lowercase + string.digits
+            candidate = ""
+            while (
+                not candidate
+                or Condominio.objects.filter(signup_slug=candidate)
+                .exclude(id=self.id)
+                .exists()
+            ):
+                random_part = "".join(
+                    secrets.choice(alphabet) for _ in range(12)
+                )
+                candidate = f"cad-{random_part}"
+            self.signup_slug = candidate
+
+    def save(self, *args, **kwargs):
+        self.ensure_signup_credentials()
+        super().save(*args, **kwargs)
 
 
 class CondominioLogo(models.Model):

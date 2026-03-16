@@ -192,6 +192,16 @@ def sindico_stats_view(request):
                 .count()
             )
 
+            moradores_pendentes = (
+                User.objects.filter(
+                    condominio_id=condominio_id,
+                    groups__name="Moradores",
+                    is_active=False,
+                )
+                .distinct()
+                .count()
+            )
+
             percentual_ativos = (
                 round((moradores_ativos / moradores_total) * 100)
                 if moradores_total > 0
@@ -201,6 +211,7 @@ def sindico_stats_view(request):
             logger.exception("Erro ao calcular moradores do condomínio")
             moradores_total = 0
             moradores_ativos = 0
+            moradores_pendentes = 0
             percentual_ativos = 0
 
         # 2. FUNCIONÁRIOS (Portaria)
@@ -232,7 +243,8 @@ def sindico_stats_view(request):
         # 4. ENCOMENDAS PENDENTES (não retiradas) com cor por idade da mais antiga
         try:
             encomendas_qs = Encomenda.objects.filter(
-                created_by__condominio_id=condominio_id, retirado_em__isnull=True
+                created_by__condominio_id=condominio_id,
+                retirado_em__isnull=True,
             ).order_by("created_on")
 
             encomendas_pendentes_total = encomendas_qs.count()
@@ -319,6 +331,7 @@ def sindico_stats_view(request):
                 "moradores": {
                     "total": moradores_total,
                     "ativos": moradores_ativos,
+                    "pendentes": moradores_pendentes,
                     "percentual_ativos": percentual_ativos,
                 },
                 "funcionarios": {"total": funcionarios_total},

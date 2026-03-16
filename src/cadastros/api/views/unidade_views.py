@@ -89,7 +89,7 @@ def unidade_list_view(request):
 
         # Paginação
         page = int(request.GET.get("page", 1))
-        paginator = Paginator(unidades, 10)
+        paginator = Paginator(unidades, 12)
         page_obj = paginator.get_page(page)
 
         serializer = UnidadeListSerializer(page_obj.object_list, many=True)

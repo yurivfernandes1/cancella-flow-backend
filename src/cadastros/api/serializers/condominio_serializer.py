@@ -14,6 +14,8 @@ class CondominioSerializer(serializers.ModelSerializer):
     cidade = serializers.SerializerMethodField(read_only=True)
     estado = serializers.SerializerMethodField(read_only=True)
     logo_url = serializers.SerializerMethodField(read_only=True)
+    signup_slug = serializers.CharField(read_only=True)
+    signup_path = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Condominio
@@ -31,6 +33,8 @@ class CondominioSerializer(serializers.ModelSerializer):
             "cnpj",
             "telefone",
             "logo_url",
+            "signup_slug",
+            "signup_path",
             "sindico_nome",
             "sindico_id",
             "is_ativo",
@@ -49,7 +53,14 @@ class CondominioSerializer(serializers.ModelSerializer):
             "cidade",
             "estado",
             "logo_url",
+            "signup_slug",
+            "signup_path",
         ]
+
+    def get_signup_path(self, obj):
+        if not obj.signup_slug:
+            return None
+        return f"/signup/{obj.signup_slug}"
 
     def get_logo_url(self, obj):
         """Retorna a URL completa da logo"""
@@ -308,11 +319,14 @@ class CondominioListSerializer(serializers.ModelSerializer):
         return [
             {
                 "id": str(s.id),
-                "full_name": s.full_name or f"{s.first_name} {s.last_name}".strip(),
+                "full_name": s.full_name
+                or f"{s.first_name} {s.last_name}".strip(),
                 "email": s.email or "",
                 "username": s.username,
                 "phone": s.phone or "",
                 "is_active": s.is_active,
             }
-            for s in obj.usuarios.filter(groups__name="Síndicos").order_by("full_name")
+            for s in obj.usuarios.filter(groups__name="Síndicos").order_by(
+                "full_name"
+            )
         ]

@@ -11,6 +11,7 @@ class UserSerializer(serializers.ModelSerializer):
     )
     unidade_identificacao = serializers.SerializerMethodField(read_only=True)
     unidade_id = serializers.SerializerMethodField(read_only=True)
+    foto_url = serializers.SerializerMethodField(read_only=True)
 
     def get_unidade_identificacao(self, obj):
         first = obj.unidades.first()
@@ -19,6 +20,11 @@ class UserSerializer(serializers.ModelSerializer):
     def get_unidade_id(self, obj):
         first = obj.unidades.first()
         return str(first.id) if first else None
+
+    def get_foto_url(self, obj):
+        if obj.foto_db_data:
+            return f"/access/profile/{obj.id}/foto-db/"
+        return None
 
     class Meta:
         model = User
@@ -39,4 +45,5 @@ class UserSerializer(serializers.ModelSerializer):
             "condominio_id",
             "unidade_identificacao",
             "unidade_id",
+            "foto_url",
         )

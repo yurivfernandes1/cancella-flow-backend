@@ -1,11 +1,150 @@
+import re
+from urllib.parse import urlparse
+
 from app.utils.validators import format_cpf
+from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 User = get_user_model()
+USERNAME_REGEX = re.compile(r"^[a-z0-9](?:[a-z0-9._-]{1,28}[a-z0-9])?$")
+
+
+def _to_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return int(value) == 1
+    if isinstance(value, str):
+        return value.strip().lower() in {
+            "1",
+            "true",
+            "t",
+            "sim",
+            "s",
+            "yes",
+            "y",
+            "ativo",
+        }
+    return bool(value)
+
+
+def _build_login_url(request):
+    frontend_base = request.headers.get("Origin") or getattr(
+        django_settings, "FRONTEND_BASE_URL", ""
+    )
+
+    if not frontend_base:
+        referer = request.headers.get("Referer", "")
+        if referer:
+            parsed = urlparse(referer)
+            if parsed.scheme and parsed.netloc:
+                frontend_base = f"{parsed.scheme}://{parsed.netloc}"
+
+    frontend_base = str(frontend_base or "").rstrip("/")
+    if not frontend_base:
+        frontend_base = "https://cancellaflow.yurivf.com.br"
+
+    return f"{frontend_base}/login"
+
+
+def _enviar_email_aprovacao_morador(request, user, senha_temporaria):
+    import base64
+    import io
+
+    import resend
+
+    if not user.email:
+        return False
+
+    api_key = django_settings.RESEND_API_KEY
+    email_from = django_settings.EMAIL_FROM
+    if not api_key:
+        return False
+
+    condominio = getattr(user, "condominio", None)
+    condominio_nome = getattr(condominio, "nome", None) or "Condomínio"
+    login_url = _build_login_url(request)
+
+    logo_html = ""
+    logo_bytes = None
+    try:
+        from PIL import Image
+
+        if condominio and getattr(condominio, "logo_db_data", None):
+            image_buffer = io.BytesIO(bytes(condominio.logo_db_data))
+            img = Image.open(image_buffer).convert("RGBA")
+            img.thumbnail((220, 80), Image.LANCZOS)
+            out_buffer = io.BytesIO()
+            img.save(out_buffer, format="PNG")
+            logo_bytes = out_buffer.getvalue()
+            logo_html = (
+                f'<img src="cid:logo" alt="{condominio_nome}" '
+                'style="max-width:220px;max-height:80px;margin-top:8px;" />'
+            )
+    except Exception:
+        logo_html = ""
+        logo_bytes = None
+
+    nome = user.full_name or user.username
+    html_body = f"""
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+  <div style="background:#19294a;padding:20px 24px;text-align:center;">
+    <p style="color:#ffffff;margin:0;font-size:1rem;font-weight:600;">{condominio_nome}</p>
+    {logo_html}
+  </div>
+  <div style="padding:24px;background:#ffffff;">
+    <h2 style="color:#19294a;margin:0 0 12px;font-size:1.1rem;">Olá, {nome}!</h2>
+    <p style="color:#374151;line-height:1.6;margin:0 0 16px;">
+      Seu cadastro foi <strong style="color:#15803d;">aprovado</strong>.
+      Use os dados abaixo para seu primeiro acesso:
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+      <tr>
+        <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Link de acesso</td>
+        <td style="padding:8px 12px;color:#111827;font-weight:500;"><a href="{login_url}" style="color:#2563eb;text-decoration:none;">{login_url}</a></td>
+      </tr>
+      <tr>
+        <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Usuário</td>
+        <td style="padding:8px 12px;color:#111827;font-weight:600;">{user.username}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Senha temporária</td>
+        <td style="padding:8px 12px;color:#111827;font-weight:600;">{senha_temporaria}</td>
+      </tr>
+    </table>
+    <p style="color:#92400e;font-size:0.86rem;margin:0;">
+      Por segurança, altere sua senha no primeiro login.
+    </p>
+  </div>
+</div>
+"""
+
+    try:
+        resend.api_key = api_key
+        payload = {
+            "from": email_from,
+            "to": [user.email],
+            "subject": "Seu acesso ao Cancella Flow foi aprovado",
+            "html": html_body,
+        }
+        if logo_bytes:
+            payload["attachments"] = [
+                {
+                    "filename": "logo.png",
+                    "content": base64.b64encode(logo_bytes).decode(),
+                    "content_id": "logo",
+                    "disposition": "inline",
+                }
+            ]
+        resend.Emails.send(payload)
+        return True
+    except Exception:
+        return False
 
 
 class ProfileView(APIView):
@@ -39,6 +178,9 @@ class ProfileView(APIView):
                 "condominio_nome": user.condominio.nome
                 if user.condominio
                 else None,
+                "foto_url": f"/access/profile/{user.id}/foto-db/"
+                if user.foto_db_data
+                else None,
                 "unidade_id": user.unidades.values_list(
                     "id", flat=True
                 ).first(),
@@ -59,6 +201,12 @@ class ProfileView(APIView):
         try:
             # Determinar usuário alvo da atualização
             target_user = None
+            is_sindico_requester = request.user.groups.filter(
+                name="Síndicos"
+            ).exists()
+            was_inactive = False
+            activated_now = False
+            should_delete_pending_user = False
 
             if user_id is None:
                 target_user = request.user
@@ -98,6 +246,8 @@ class ProfileView(APIView):
             if "password" in request.data:
                 target_user.set_password(request.data["password"])
 
+            was_inactive = not bool(target_user.is_active)
+
             # Atualiza outros campos
             allowed_fields = [
                 "full_name",
@@ -113,7 +263,35 @@ class ProfileView(APIView):
 
             for field in allowed_fields:
                 if field in request.data:
-                    setattr(target_user, field, request.data[field])
+                    if field == "is_active":
+                        new_is_active = _to_bool(request.data[field])
+                        if was_inactive and new_is_active:
+                            activated_now = True
+                        target_user.is_active = new_is_active
+                    else:
+                        setattr(target_user, field, request.data[field])
+
+            if "username" in request.data:
+                username = (
+                    str(request.data.get("username") or "").strip().lower()
+                )
+                if not USERNAME_REGEX.match(username):
+                    return Response(
+                        {
+                            "error": "Nome de usuário inválido. Use 3 a 30 caracteres com letras minúsculas, números, ponto, hífen ou underline."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                if (
+                    User.objects.filter(username=username)
+                    .exclude(id=target_user.id)
+                    .exists()
+                ):
+                    return Response(
+                        {"error": "Nome de usuário já está em uso."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                target_user.username = username
 
             # is_staff só pode ser alterado por staff
             if "is_staff" in request.data and request.user.is_staff:
@@ -171,23 +349,27 @@ class ProfileView(APIView):
                 except Unidade.DoesNotExist:
                     pass  # silencioso — pode ter sido removida antes
 
+                # Rejeição de pendente: inativo e ação de desvincular por síndico/admin => excluir usuário
+                if not target_user.is_active and (
+                    request.user.is_staff or is_sindico_requester
+                ):
+                    should_delete_pending_user = True
+
                 # Se não sobrou nenhuma unidade, remover automaticamente do grupo Moradores
                 if not target_user.unidades.exists():
-                    from django.contrib.auth.models import Group
-
                     try:
                         grupo_moradores = Group.objects.get(name="Moradores")
                         target_user.groups.remove(grupo_moradores)
                     except Group.DoesNotExist:
                         pass
 
+                    # Mantém o usuário sem o grupo caso não haja unidades.
+
             # Gerenciar grupo Moradores via campo is_morador
             if "is_morador" in request.data:
-                from django.contrib.auth.models import Group
-
                 try:
                     grupo_moradores = Group.objects.get(name="Moradores")
-                    is_morador = bool(request.data["is_morador"])
+                    is_morador = _to_bool(request.data["is_morador"])
 
                     if is_morador:
                         # Adicionar ao grupo Moradores se não estiver
@@ -226,8 +408,39 @@ class ProfileView(APIView):
                 # aplica o cpf normalizado antes de salvar
                 target_user.cpf = cpf_normalizado
 
+            if should_delete_pending_user:
+                target_user.delete()
+                return Response(
+                    {
+                        "message": "Cadastro pendente rejeitado. Usuário removido com sucesso."
+                    }
+                )
+
+            senha_temporaria_aprovacao = None
+            email_enviado = False
+            if activated_now:
+                senha_temporaria_aprovacao = (
+                    User.objects.make_random_password()
+                )
+                target_user.set_password(senha_temporaria_aprovacao)
+                target_user.first_access = True
+
             target_user.save()
-            return Response({"message": "Atualizado com sucesso"})
+
+            if activated_now:
+                email_enviado = _enviar_email_aprovacao_morador(
+                    request,
+                    target_user,
+                    senha_temporaria_aprovacao,
+                )
+
+            return Response(
+                {
+                    "message": "Atualizado com sucesso",
+                    "email_enviado": email_enviado,
+                    "aprovacao_realizada": activated_now,
+                }
+            )
 
         except User.DoesNotExist:
             return Response(
