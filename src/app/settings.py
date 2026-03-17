@@ -39,6 +39,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "cancella-flow-backend.onrender.com",
     "cancellaflow.yurivf.com.br",
+    "api-cancellaflow.yurivf.com.br",
 ]
 
 
@@ -183,6 +184,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://cancella-flow-backend.onrender.com",
     "http://cancella-flow-backend.onrender.com",
     "https://cancellaflow.yurivf.com.br",
+    "api-cancellaflow.yurivf.com.br",
 ]
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
