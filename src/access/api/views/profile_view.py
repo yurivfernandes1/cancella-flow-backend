@@ -34,9 +34,10 @@ def _to_bool(value):
 
 
 def _build_login_url(request):
-    frontend_base = request.headers.get("Origin") or getattr(
+    # Prefer explicit setting `FRONTEND_BASE_URL`, fallback to request headers
+    frontend_base = getattr(
         django_settings, "FRONTEND_BASE_URL", ""
-    )
+    ) or request.headers.get("Origin")
 
     if not frontend_base:
         referer = request.headers.get("Referer", "")
