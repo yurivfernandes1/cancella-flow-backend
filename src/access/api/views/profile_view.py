@@ -148,45 +148,45 @@ def _enviar_email_aprovacao_morador(request, user, senha_temporaria):
 
 
 def _enviar_email_reset_senha(request, user, nova_senha):
-        import base64
-        import io
+    import base64
+    import io
 
-        import resend
+    import resend
 
-        if not user.email:
-                return False
+    if not user.email:
+        return False
 
-        api_key = django_settings.RESEND_API_KEY
-        email_from = django_settings.EMAIL_FROM
-        if not api_key:
-                return False
+    api_key = django_settings.RESEND_API_KEY
+    email_from = django_settings.EMAIL_FROM
+    if not api_key:
+        return False
 
-        condominio = getattr(user, "condominio", None)
-        condominio_nome = getattr(condominio, "nome", None) or "Condomínio"
-        login_url = _build_login_url(request)
+    condominio = getattr(user, "condominio", None)
+    condominio_nome = getattr(condominio, "nome", None) or "Condomínio"
+    login_url = _build_login_url(request)
 
+    logo_html = ""
+    logo_bytes = None
+    try:
+        from PIL import Image
+
+        if condominio and getattr(condominio, "logo_db_data", None):
+            image_buffer = io.BytesIO(bytes(condominio.logo_db_data))
+            img = Image.open(image_buffer).convert("RGBA")
+            img.thumbnail((220, 80), Image.LANCZOS)
+            out_buffer = io.BytesIO()
+            img.save(out_buffer, format="PNG")
+            logo_bytes = out_buffer.getvalue()
+            logo_html = (
+                f'<img src="cid:logo" alt="{condominio_nome}" '
+                'style="max-width:220px;max-height:80px;margin-top:8px;" />'
+            )
+    except Exception:
         logo_html = ""
         logo_bytes = None
-        try:
-                from PIL import Image
 
-                if condominio and getattr(condominio, "logo_db_data", None):
-                        image_buffer = io.BytesIO(bytes(condominio.logo_db_data))
-                        img = Image.open(image_buffer).convert("RGBA")
-                        img.thumbnail((220, 80), Image.LANCZOS)
-                        out_buffer = io.BytesIO()
-                        img.save(out_buffer, format="PNG")
-                        logo_bytes = out_buffer.getvalue()
-                        logo_html = (
-                                f'<img src="cid:logo" alt="{condominio_nome}" '
-                                'style="max-width:220px;max-height:80px;margin-top:8px;" />'
-                        )
-        except Exception:
-                logo_html = ""
-                logo_bytes = None
-
-        nome = user.full_name or user.username
-        html_body = f"""
+    nome = user.full_name or user.username
+    html_body = f"""
 <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
     <div style="background:#19294a;padding:20px 24px;text-align:center;">
         <p style="color:#ffffff;margin:0;font-size:1rem;font-weight:600;">{condominio_nome}</p>
@@ -218,27 +218,27 @@ def _enviar_email_reset_senha(request, user, nova_senha):
 </div>
 """
 
-        try:
-                resend.api_key = api_key
-                payload = {
-                        "from": email_from,
-                        "to": [user.email],
-                        "subject": "Sua senha no Cancella Flow foi alterada",
-                        "html": html_body,
+    try:
+        resend.api_key = api_key
+        payload = {
+            "from": email_from,
+            "to": [user.email],
+            "subject": "Sua senha no Cancella Flow foi alterada",
+            "html": html_body,
+        }
+        if logo_bytes:
+            payload["attachments"] = [
+                {
+                    "filename": "logo.png",
+                    "content": base64.b64encode(logo_bytes).decode(),
+                    "content_id": "logo",
+                    "disposition": "inline",
                 }
-                if logo_bytes:
-                        payload["attachments"] = [
-                                {
-                                        "filename": "logo.png",
-                                        "content": base64.b64encode(logo_bytes).decode(),
-                                        "content_id": "logo",
-                                        "disposition": "inline",
-                                }
-                        ]
-                resend.Emails.send(payload)
-                return True
-        except Exception:
-                return False
+            ]
+        resend.Emails.send(payload)
+        return True
+    except Exception:
+        return False
 
 
 class ProfileView(APIView):

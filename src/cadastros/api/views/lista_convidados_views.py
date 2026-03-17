@@ -855,10 +855,14 @@ def confirmar_por_qrcode_view(request):
         # Tentar como token de visitante
         try:
             import uuid as _uuid
-            visitante = Visitante.objects.select_related("morador").get(qr_token=token)
+
+            visitante = Visitante.objects.select_related("morador").get(
+                qr_token=token
+            )
         except (Visitante.DoesNotExist, Exception):
             return Response(
-                {"error": "QR code inválido."}, status=status.HTTP_404_NOT_FOUND
+                {"error": "QR code inválido."},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         from django.utils import timezone as tz
@@ -884,7 +888,9 @@ def confirmar_por_qrcode_view(request):
             "documento": visitante.documento,
         }
         # Se o documento parecer um CPF com 11 dígitos, retorne também como cpf (somente dígitos)
-        digitos = "".join(c for c in str(visitante.documento or "") if c.isdigit())
+        digitos = "".join(
+            c for c in str(visitante.documento or "") if c.isdigit()
+        )
         if len(digitos) == 11:
             resp["cpf"] = digitos
 
@@ -998,14 +1004,18 @@ def download_qrcode_view(request):
     text_x = canvas.width // 2
     text_y = qr_size + padding + name_height // 2
     try:
-        draw.text((text_x, text_y), nome, fill="#111827", font=font, anchor="mm")
+        draw.text(
+            (text_x, text_y), nome, fill="#111827", font=font, anchor="mm"
+        )
     except TypeError:
         try:
             bbox = draw.textbbox((0, 0), nome, font=font)
             text_w = bbox[2] - bbox[0]
         except AttributeError:
             text_w = len(nome) * 10
-        draw.text((text_x - text_w // 2, text_y - 9), nome, fill="#111827", font=font)
+        draw.text(
+            (text_x - text_w // 2, text_y - 9), nome, fill="#111827", font=font
+        )
 
     output = io.BytesIO()
     canvas.save(output, format="PNG")

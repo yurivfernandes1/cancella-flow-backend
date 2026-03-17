@@ -1,3 +1,4 @@
+from access.models import User
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
@@ -8,7 +9,6 @@ from rest_framework.response import Response
 
 from ...models import Visitante
 from ..serializers import VisitanteListSerializer, VisitanteSerializer
-from access.models import User
 
 
 def _enviar_qrcode_email_visitante(visitante):
@@ -241,8 +241,10 @@ def visitante_list_view(request):
         elif is_sindico and not (user.is_staff or is_portaria):
             # Síndicos podem ver seus próprios visitantes por padrão
             # ou todos do condomínio quando scope=all
-            if scope == 'all' and getattr(user, 'condominio_id', None):
-                visitantes = visitantes.filter(morador__condominio_id=user.condominio_id)
+            if scope == "all" and getattr(user, "condominio_id", None):
+                visitantes = visitantes.filter(
+                    morador__condominio_id=user.condominio_id
+                )
             else:
                 visitantes = visitantes.filter(morador=user)
         elif not (user.is_staff or is_portaria):
@@ -314,7 +316,9 @@ def visitante_create_view(request):
 
         if not (user.is_staff or is_morador or is_sindico):
             return Response(
-                {"error": "Apenas Moradores, Síndicos ou Administradores podem cadastrar visitantes."},
+                {
+                    "error": "Apenas Moradores, Síndicos ou Administradores podem cadastrar visitantes."
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -329,14 +333,31 @@ def visitante_create_view(request):
         if is_sindico and not user.is_staff:
             morador_id = data.get("morador_id")
             if not morador_id:
-                return Response({"error": "Síndicos devem informar 'morador_id' ao cadastrar visitante."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {
+                        "error": "Síndicos devem informar 'morador_id' ao cadastrar visitante."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             # Validar que o morador pertence ao mesmo condomínio
             try:
-                morador = User.objects.get(id=morador_id, groups__name="Moradores")
+                morador = User.objects.get(
+                    id=morador_id, groups__name="Moradores"
+                )
             except User.DoesNotExist:
-                return Response({"error": "Morador informado não encontrado."}, status=status.HTTP_400_BAD_REQUEST)
-            if getattr(user, 'condominio_id', None) and getattr(morador, 'condominio_id', None) != getattr(user, 'condominio_id', None):
-                return Response({"error": "Você só pode cadastrar visitantes para moradores do seu condomínio."}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"error": "Morador informado não encontrado."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if getattr(user, "condominio_id", None) and getattr(
+                morador, "condominio_id", None
+            ) != getattr(user, "condominio_id", None):
+                return Response(
+                    {
+                        "error": "Você só pode cadastrar visitantes para moradores do seu condomínio."
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
         serializer = VisitanteSerializer(data=data)
         if serializer.is_valid():
