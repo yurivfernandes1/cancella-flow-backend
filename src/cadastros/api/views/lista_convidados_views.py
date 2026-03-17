@@ -874,16 +874,21 @@ def confirmar_por_qrcode_view(request):
             visitante.qr_token = _uuid.uuid4()
             visitante.save(update_fields=["qr_token"])
 
-        return Response(
-            {
-                "success": True,
-                "nome": visitante.nome,
-                "lista": "Visitante",
-                "morador_nome": morador_nome,
-                "is_visitante": True,
-                "is_permanente": visitante.is_permanente,
-            }
-        )
+        resp = {
+            "success": True,
+            "nome": visitante.nome,
+            "lista": "Visitante",
+            "morador_nome": morador_nome,
+            "is_visitante": True,
+            "is_permanente": visitante.is_permanente,
+            "documento": visitante.documento,
+        }
+        # Se o documento parecer um CPF com 11 dígitos, retorne também como cpf (somente dígitos)
+        digitos = "".join(c for c in str(visitante.documento or "") if c.isdigit())
+        if len(digitos) == 11:
+            resp["cpf"] = digitos
+
+        return Response(resp)
     except Exception:
         return Response(
             {"error": "QR code inválido."}, status=status.HTTP_400_BAD_REQUEST
@@ -905,6 +910,7 @@ def confirmar_por_qrcode_view(request):
                 "nome": convidado.nome,
                 "lista": lista.titulo,
                 "morador_nome": morador_nome,
+                "cpf": convidado.cpf,
             }
         )
 
@@ -918,6 +924,7 @@ def confirmar_por_qrcode_view(request):
             "nome": convidado.nome,
             "lista": lista.titulo,
             "morador_nome": morador_nome,
+            "cpf": convidado.cpf,
         }
     )
 

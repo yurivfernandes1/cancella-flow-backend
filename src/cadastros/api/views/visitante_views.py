@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from ...models import Visitante
 from ..serializers import VisitanteListSerializer, VisitanteSerializer
+from access.models import User
 
 
 def _enviar_qrcode_email_visitante(visitante):
@@ -220,6 +221,10 @@ def visitante_list_view(request):
         # Controle de acesso por grupo
         is_portaria = user.groups.filter(name="Portaria").exists()
         is_morador = user.groups.filter(name="Moradores").exists()
+        is_sindico = user.groups.filter(name="Síndicos").exists()
+
+        # Parâmetro de escopo (opcional) para Síndicos: 'all' ou 'mine'
+        scope = (request.GET.get("scope") or "").lower()
 
         # Filtrar por condomínio do morador para Portaria (exceto staff)
         if (
@@ -230,9 +235,16 @@ def visitante_list_view(request):
             visitantes = visitantes.filter(
                 morador__condominio_id=user.condominio_id
             )
-        elif is_morador and not (user.is_staff or is_portaria):
+        elif is_morador and not (user.is_staff or is_portaria or is_sindico):
             # Moradores veem apenas seus próprios visitantes
             visitantes = visitantes.filter(morador=user)
+        elif is_sindico and not (user.is_staff or is_portaria):
+            # Síndicos podem ver seus próprios visitantes por padrão
+            # ou todos do condomínio quando scope=all
+            if scope == 'all' and getattr(user, 'condominio_id', None):
+                visitantes = visitantes.filter(morador__condominio_id=user.condominio_id)
+            else:
+                visitantes = visitantes.filter(morador=user)
         elif not (user.is_staff or is_portaria):
             # Usuários sem permissão não veem nada
             visitantes = Visitante.objects.none()
@@ -298,17 +310,33 @@ def visitante_create_view(request):
     try:
         user = request.user
         is_morador = user.groups.filter(name="Moradores").exists()
+        is_sindico = user.groups.filter(name="Síndicos").exists()
 
-        if not (user.is_staff or is_morador):
+        if not (user.is_staff or is_morador or is_sindico):
             return Response(
-                {"error": "Apenas Moradores podem cadastrar visitantes."},
+                {"error": "Apenas Moradores, Síndicos ou Administradores podem cadastrar visitantes."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Se for morador (e não admin), forçar morador_id para o próprio usuário
+        # Preparar dados e regras por tipo
         data = request.data.copy()
+
+        # Se for morador (e não admin), forçar morador_id para o próprio usuário
         if is_morador and not user.is_staff:
             data["morador_id"] = user.id
+
+        # Se for síndico (e não admin), é obrigatório fornecer morador_id
+        if is_sindico and not user.is_staff:
+            morador_id = data.get("morador_id")
+            if not morador_id:
+                return Response({"error": "Síndicos devem informar 'morador_id' ao cadastrar visitante."}, status=status.HTTP_400_BAD_REQUEST)
+            # Validar que o morador pertence ao mesmo condomínio
+            try:
+                morador = User.objects.get(id=morador_id, groups__name="Moradores")
+            except User.DoesNotExist:
+                return Response({"error": "Morador informado não encontrado."}, status=status.HTTP_400_BAD_REQUEST)
+            if getattr(user, 'condominio_id', None) and getattr(morador, 'condominio_id', None) != getattr(user, 'condominio_id', None):
+                return Response({"error": "Você só pode cadastrar visitantes para moradores do seu condomínio."}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = VisitanteSerializer(data=data)
         if serializer.is_valid():

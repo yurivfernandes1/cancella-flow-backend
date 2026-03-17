@@ -147,6 +147,100 @@ def _enviar_email_aprovacao_morador(request, user, senha_temporaria):
         return False
 
 
+def _enviar_email_reset_senha(request, user, nova_senha):
+        import base64
+        import io
+
+        import resend
+
+        if not user.email:
+                return False
+
+        api_key = django_settings.RESEND_API_KEY
+        email_from = django_settings.EMAIL_FROM
+        if not api_key:
+                return False
+
+        condominio = getattr(user, "condominio", None)
+        condominio_nome = getattr(condominio, "nome", None) or "Condomínio"
+        login_url = _build_login_url(request)
+
+        logo_html = ""
+        logo_bytes = None
+        try:
+                from PIL import Image
+
+                if condominio and getattr(condominio, "logo_db_data", None):
+                        image_buffer = io.BytesIO(bytes(condominio.logo_db_data))
+                        img = Image.open(image_buffer).convert("RGBA")
+                        img.thumbnail((220, 80), Image.LANCZOS)
+                        out_buffer = io.BytesIO()
+                        img.save(out_buffer, format="PNG")
+                        logo_bytes = out_buffer.getvalue()
+                        logo_html = (
+                                f'<img src="cid:logo" alt="{condominio_nome}" '
+                                'style="max-width:220px;max-height:80px;margin-top:8px;" />'
+                        )
+        except Exception:
+                logo_html = ""
+                logo_bytes = None
+
+        nome = user.full_name or user.username
+        html_body = f"""
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+    <div style="background:#19294a;padding:20px 24px;text-align:center;">
+        <p style="color:#ffffff;margin:0;font-size:1rem;font-weight:600;">{condominio_nome}</p>
+        {logo_html}
+    </div>
+    <div style="padding:24px;background:#ffffff;">
+        <h2 style="color:#19294a;margin:0 0 12px;font-size:1.1rem;">Olá, {nome}!</h2>
+        <p style="color:#374151;line-height:1.6;margin:0 0 16px;">
+            Sua senha foi alterada por um administrador. Use os dados abaixo para acessar:
+        </p>
+        <table style="width:100%;border-collapse:collapse;margin:0 0 20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+            <tr>
+                <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Link de acesso</td>
+                <td style="padding:8px 12px;color:#111827;font-weight:500;"><a href="{login_url}" style="color:#2563eb;text-decoration:none;">{login_url}</a></td>
+            </tr>
+            <tr>
+                <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Usuário</td>
+                <td style="padding:8px 12px;color:#111827;font-weight:600;">{user.username}</td>
+            </tr>
+            <tr>
+                <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Senha</td>
+                <td style="padding:8px 12px;color:#111827;font-weight:600;">{nova_senha}</td>
+            </tr>
+        </table>
+        <p style="color:#92400e;font-size:0.86rem;margin:0;">
+            Por segurança, altere sua senha após o primeiro acesso.
+        </p>
+    </div>
+</div>
+"""
+
+        try:
+                resend.api_key = api_key
+                payload = {
+                        "from": email_from,
+                        "to": [user.email],
+                        "subject": "Sua senha no Cancella Flow foi alterada",
+                        "html": html_body,
+                }
+                if logo_bytes:
+                        payload["attachments"] = [
+                                {
+                                        "filename": "logo.png",
+                                        "content": base64.b64encode(logo_bytes).decode(),
+                                        "content_id": "logo",
+                                        "disposition": "inline",
+                                }
+                        ]
+                resend.Emails.send(payload)
+                return True
+        except Exception:
+                return False
+
+
 class ProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -243,8 +337,14 @@ class ProfileView(APIView):
                         )
 
             # Campo especial para senha
+            senha_alterada_por_terceiro = False
+            nova_senha_fornecida = None
             if "password" in request.data:
-                target_user.set_password(request.data["password"])
+                nova_senha_fornecida = request.data["password"]
+                target_user.set_password(nova_senha_fornecida)
+                # Se quem está fazendo a alteração não for o próprio usuário, marcar para envio de e-mail
+                if request.user.id != target_user.id:
+                    senha_alterada_por_terceiro = True
 
             was_inactive = not bool(target_user.is_active)
 
@@ -433,6 +533,15 @@ class ProfileView(APIView):
                     target_user,
                     senha_temporaria_aprovacao,
                 )
+
+            # Enviar e-mail informando usuário e nova senha quando alterado por administrador/síndico
+            if senha_alterada_por_terceiro and nova_senha_fornecida:
+                try:
+                    _enviar_email_reset_senha(
+                        request, target_user, nova_senha_fornecida
+                    )
+                except Exception:
+                    pass
 
             return Response(
                 {
