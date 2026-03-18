@@ -28,6 +28,7 @@ urlpatterns = [
     path("api/access/", include("access.api.urls")),
     path("api/cadastros/", include("cadastros.api.urls")),
     path("api/health/", health),
+    path("health/", health),
 ]
 
 # Servir arquivos de mídia em desenvolvimento
