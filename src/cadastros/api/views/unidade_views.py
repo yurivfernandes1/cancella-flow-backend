@@ -358,61 +358,6 @@ _EXCEL_COLUMNS = [
             "Exemplos: 101, 201A, Cobertura"
         ),
     },
-    {
-        "key": "primeiro_nome",
-        "label": "Primeiro Nome",
-        "width": 22,
-        "obrigatorio": True,
-        "comentario": (
-            "Primeiro nome do morador.\nObrigatório. Máximo 30 caracteres."
-        ),
-    },
-    {
-        "key": "sobrenome",
-        "label": "Sobrenome",
-        "width": 22,
-        "obrigatorio": True,
-        "comentario": (
-            "Sobrenome do morador.\nObrigatório. Máximo 150 caracteres."
-        ),
-    },
-    {
-        "key": "cpf",
-        "label": "CPF",
-        "width": 16,
-        "obrigatorio": True,
-        "comentario": (
-            "CPF do morador.\n"
-            "Obrigatório. Digite APENAS os 11 dígitos,\n"
-            "sem pontos, traços ou espaços.\n"
-            "Exemplo: 12345678901"
-        ),
-    },
-    {
-        "key": "email",
-        "label": "E-mail",
-        "width": 32,
-        "obrigatorio": True,
-        "comentario": (
-            "E-mail do morador.\n"
-            "Obrigatório. Será utilizado para login no sistema.\n"
-            "Deve conter @ e domínio válido.\n"
-            "Exemplo: joao.silva@email.com"
-        ),
-    },
-    {
-        "key": "telefone",
-        "label": "Telefone",
-        "width": 18,
-        "obrigatorio": False,
-        "comentario": (
-            "Telefone do morador.\n"
-            "Opcional. Digite APENAS os dígitos,\n"
-            "sem parênteses, traços ou espaços.\n"
-            "10 dígitos (fixo) ou 11 dígitos (celular).\n"
-            "Exemplo: 11999990000"
-        ),
-    },
 ]
 
 
@@ -431,7 +376,7 @@ def _gerar_username(primeiro_nome: str, sobrenome: str) -> str:
 def export_modelo_excel_view(request):
     """
     Retorna um arquivo Excel modelo (.xlsx) formatado para importação de
-    unidades e moradores. Apenas Síndicos e Administradores podem acessar.
+    unidades. Apenas Síndicos e Administradores podem acessar.
     """
     user = request.user
     is_sindico = user.groups.filter(name="Síndicos").exists()
@@ -444,7 +389,7 @@ def export_modelo_excel_view(request):
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Unidades e Moradores"
+    ws.title = "Unidades"
 
     num_cols = len(_EXCEL_COLUMNS)
     num_data_rows = 500  # linhas reservadas para dados + validação
@@ -468,7 +413,7 @@ def export_modelo_excel_view(request):
     ws.row_dimensions[1].height = 28
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=num_cols)
     title_cell = ws.cell(row=1, column=1)
-    title_cell.value = "Modelo de Importação — Unidades e Moradores"
+    title_cell.value = "Modelo de Importação — Unidades"
     title_cell.fill = header_fill
     title_cell.font = Font(bold=True, color="FFFFFF", size=13)
     title_cell.alignment = center
@@ -486,15 +431,7 @@ def export_modelo_excel_view(request):
 
     # ── Linha 3: Exemplo ─────────────────────────────────────────────────────
     ws.row_dimensions[3].height = 16
-    example_row = [
-        "A",
-        "101",
-        "João",
-        "Silva",
-        "12345678901",
-        "joao.silva@email.com",
-        "11999990000",
-    ]
+    example_row = ["A", "101"]
     for i, val in enumerate(example_row, start=1):
         cell = ws.cell(row=3, column=i)
         cell.value = val
@@ -526,12 +463,7 @@ def export_modelo_excel_view(request):
         end_column=num_cols,
     )
     legend_cell = ws.cell(row=legend_row, column=1)
-    legend_cell.value = (
-        "(*) Campos obrigatórios   |   "
-        "CPF: 11 dígitos sem pontos/traços   |   "
-        "Telefone: 10 ou 11 dígitos sem formatação   |   "
-        "Username gerado automaticamente"
-    )
+    legend_cell.value = "(*) Campos obrigatórios"
     legend_cell.font = Font(color="595959", italic=True, size=9)
     legend_cell.alignment = Alignment(horizontal="left", vertical="center")
 
@@ -558,95 +490,6 @@ def export_modelo_excel_view(request):
         )
         letter = get_column_letter(idx)
         return f"{letter}{data_start}:{letter}{data_end}"
-
-    # CPF: exatamente 11 dígitos numéricos
-    dv_cpf = DataValidation(
-        type="custom",
-        formula1=f"=AND(LEN({col_ref('cpf', data_start)})=11,ISNUMBER(VALUE({col_ref('cpf', data_start)})))",
-        allow_blank=True,
-        showErrorMessage=True,
-        errorTitle="CPF inválido",
-        error="Digite exatamente 11 dígitos numéricos, sem pontos ou traços. Ex: 12345678901",
-        showInputMessage=True,
-        promptTitle="CPF do morador",
-        prompt="Digite os 11 dígitos do CPF sem pontos ou traços. Ex: 12345678901",
-    )
-    dv_cpf.sqref = col_range("cpf")
-    ws.add_data_validation(dv_cpf)
-
-    # Telefone: 10 ou 11 dígitos numéricos (opcional)
-    dv_tel = DataValidation(
-        type="custom",
-        formula1=(
-            f'=OR({col_ref("telefone", data_start)}="",'
-            f"AND(LEN({col_ref('telefone', data_start)})>=10,"
-            f"LEN({col_ref('telefone', data_start)})<=11,"
-            f"ISNUMBER(VALUE({col_ref('telefone', data_start)}))))"
-        ),
-        allow_blank=True,
-        showErrorMessage=True,
-        errorTitle="Telefone inválido",
-        error="Digite apenas os dígitos: 10 (fixo) ou 11 (celular). Ex: 11999990000",
-        showInputMessage=True,
-        promptTitle="Telefone do morador",
-        prompt="Opcional. Digite apenas os dígitos, sem parênteses ou traços. Ex: 11999990000",
-    )
-    dv_tel.sqref = col_range("telefone")
-    ws.add_data_validation(dv_tel)
-
-    # E-mail: deve conter @ e ponto após o @
-    dv_email = DataValidation(
-        type="custom",
-        formula1=(
-            f"=AND("
-            f'ISNUMBER(FIND("@",{col_ref("email", data_start)})),'
-            f'ISNUMBER(FIND(".",{col_ref("email", data_start)},FIND("@",{col_ref("email", data_start)})+1))'
-            f")"
-        ),
-        allow_blank=True,
-        showErrorMessage=True,
-        errorTitle="E-mail inválido",
-        error="Digite um e-mail válido com @ e domínio. Ex: joao@email.com",
-        showInputMessage=True,
-        promptTitle="E-mail do morador",
-        prompt="Obrigatório. Será usado para login. Ex: joao.silva@email.com",
-    )
-    dv_email.sqref = col_range("email")
-    ws.add_data_validation(dv_email)
-
-    # Primeiro nome: 1 a 30 caracteres
-    dv_nome = DataValidation(
-        type="textLength",
-        operator="between",
-        formula1="1",
-        formula2="30",
-        allow_blank=True,
-        showErrorMessage=True,
-        errorTitle="Primeiro nome inválido",
-        error="O primeiro nome deve ter entre 1 e 30 caracteres.",
-        showInputMessage=True,
-        promptTitle="Primeiro nome",
-        prompt="Obrigatório. Máximo 30 caracteres.",
-    )
-    dv_nome.sqref = col_range("primeiro_nome")
-    ws.add_data_validation(dv_nome)
-
-    # Sobrenome: 1 a 150 caracteres
-    dv_sobrenome = DataValidation(
-        type="textLength",
-        operator="between",
-        formula1="1",
-        formula2="150",
-        allow_blank=True,
-        showErrorMessage=True,
-        errorTitle="Sobrenome inválido",
-        error="O sobrenome deve ter entre 1 e 150 caracteres.",
-        showInputMessage=True,
-        promptTitle="Sobrenome",
-        prompt="Obrigatório. Máximo 150 caracteres.",
-    )
-    dv_sobrenome.sqref = col_range("sobrenome")
-    ws.add_data_validation(dv_sobrenome)
 
     # Número da unidade: 1 a 20 caracteres
     dv_unidade = DataValidation(
@@ -686,7 +529,7 @@ def export_modelo_excel_view(request):
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     response["Content-Disposition"] = (
-        'attachment; filename="modelo_unidades_moradores.xlsx"'
+        'attachment; filename="modelo_unidades.xlsx"'
     )
     return response
 
@@ -695,7 +538,7 @@ def export_modelo_excel_view(request):
 @permission_classes([IsAuthenticated])
 def import_excel_view(request):
     """
-    Importa unidades e moradores a partir de um arquivo Excel (.xlsx).
+    Importa unidades a partir de um arquivo Excel (.xlsx).
     Apenas Síndicos e Administradores podem importar.
     O arquivo deve seguir o modelo gerado por export_modelo_excel_view.
     A linha 2 contém os rótulos das colunas, a linha 3 é o exemplo (ignorada), dados a partir da linha 4.
@@ -770,7 +613,6 @@ def import_excel_view(request):
         val = row[idx]
         return str(val).strip() if val is not None else ""
 
-    moradores_group, _ = Group.objects.get_or_create(name="Moradores")
     condominio = user.condominio
     criados = 0
     erros = []
@@ -779,120 +621,23 @@ def import_excel_view(request):
         # Ignorar linhas completamente vazias
         if all((v is None or str(v).strip() == "") for v in row):
             continue
-
         bloco = get_col(row, "bloco")
         numero = get_col(row, "numero_unidade")
-        primeiro_nome = get_col(row, "primeiro_nome")
-        sobrenome = get_col(row, "sobrenome")
-        cpf_raw = get_col(row, "cpf")
-        email = get_col(row, "email").lower()
-        telefone = get_col(row, "telefone")
 
-        # Validações obrigatórias
+        # Validação mínima
         if not numero:
-            erros.append(
-                {"linha": row_num, "motivo": "numero_unidade é obrigatório."}
-            )
+            erros.append({"linha": row_num, "motivo": "numero_unidade é obrigatório."})
             continue
-        if not primeiro_nome:
-            erros.append(
-                {"linha": row_num, "motivo": "primeiro_nome é obrigatório."}
-            )
-            continue
-        if not sobrenome:
-            erros.append(
-                {"linha": row_num, "motivo": "sobrenome é obrigatório."}
-            )
-            continue
-        if not cpf_raw:
-            erros.append({"linha": row_num, "motivo": "cpf é obrigatório."})
-            continue
-        if not email:
-            erros.append({"linha": row_num, "motivo": "email é obrigatório."})
-            continue
-
-        # Normalizar CPF (só dígitos)
-        cpf_digits = "".join(c for c in cpf_raw if c.isdigit())
-        if len(cpf_digits) != 11:
-            erros.append(
-                {
-                    "linha": row_num,
-                    "motivo": f"CPF inválido: '{cpf_raw}'. Use 11 dígitos sem pontos ou traços.",
-                }
-            )
-            continue
-
-        # Normalizar telefone (só dígitos, opcional)
-        telefone_digits = "".join(c for c in telefone if c.isdigit())
-
-        # Gerar username idêntico à lógica do frontend
-        username = _gerar_username(primeiro_nome, sobrenome)
-        full_name = f"{primeiro_nome.strip()} {sobrenome.strip()}"
 
         try:
-            unidade, _ = Unidade.objects.get_or_create(
+            unidade, created = Unidade.objects.get_or_create(
                 numero=numero,
                 bloco=bloco if bloco else None,
                 defaults={"created_by": user},
             )
 
-            # Verificar duplicatas
-            if User.objects.filter(cpf=cpf_digits).exists():
-                erros.append(
-                    {
-                        "linha": row_num,
-                        "motivo": f"CPF '{cpf_raw}' já cadastrado.",
-                    }
-                )
-                continue
-
-            # Se username já existe, tentar variação com sufixo numérico
-            base_username = username
-            suffix = 1
-            while User.objects.filter(username=username).exists():
-                username = f"{base_username}_{suffix}"
-                suffix += 1
-                if suffix > 99:
-                    erros.append(
-                        {
-                            "linha": row_num,
-                            "motivo": f"Não foi possível gerar username único para '{full_name}'.",
-                        }
-                    )
-                    break
-            else:
-                pass  # username disponível; continua normalmente
-
-            if suffix > 99:
-                continue
-
-            if email and User.objects.filter(email=email).exists():
-                erros.append(
-                    {
-                        "linha": row_num,
-                        "motivo": f"E-mail '{email}' já cadastrado.",
-                    }
-                )
-                continue
-
-            # Gerar senha aleatória segura
-            alphabet = string.ascii_letters + string.digits + "!@#$%"
-            senha = "".join(secrets.choice(alphabet) for _ in range(12))
-
-            morador = User.objects.create_user(
-                username=username,
-                password=senha,
-                full_name=full_name,
-                cpf=cpf_digits,
-                phone=telefone_digits,
-                email=email,
-                condominio=condominio,
-                first_access=True,
-                created_by=user,
-            )
-            morador.unidades.add(unidade)
-            morador.groups.add(moradores_group)
-            criados += 1
+            if created:
+                criados += 1
 
         except Exception as e:
             erros.append({"linha": row_num, "motivo": str(e)})
