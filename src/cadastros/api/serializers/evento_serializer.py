@@ -70,10 +70,21 @@ class EventoSerializer(serializers.ModelSerializer):
         return rep
 
     def get_imagem_url(self, obj):
-        if obj.imagem:
-            request = self.context.get("request")
+        request = self.context.get("request")
+        # Se imagem estiver armazenada como BLOB no banco, expõe rota protegida
+        if getattr(obj, "imagem_db_data", None):
+            if request:
+                return request.build_absolute_uri(
+                    f"/api/cadastros/eventos/{obj.id}/imagem-db/"
+                )
+            return f"/api/cadastros/eventos/{obj.id}/imagem-db/"
+
+        # Caso legado usando ImageField
+        if getattr(obj, "imagem", None):
             if request:
                 return request.build_absolute_uri(obj.imagem.url)
+            return obj.imagem.url
+
         return None
 
     def validate_espaco_id(self, value):
@@ -201,10 +212,19 @@ class EventoListSerializer(serializers.ModelSerializer):
         return getattr(obj.espaco, "nome", None)
 
     def get_imagem_url(self, obj):
-        if obj.imagem:
-            request = self.context.get("request")
+        request = self.context.get("request")
+        if getattr(obj, "imagem_db_data", None):
+            if request:
+                return request.build_absolute_uri(
+                    f"/api/cadastros/eventos/{obj.id}/imagem-db/"
+                )
+            return f"/api/cadastros/eventos/{obj.id}/imagem-db/"
+
+        if getattr(obj, "imagem", None):
             if request:
                 return request.build_absolute_uri(obj.imagem.url)
+            return obj.imagem.url
+
         return None
 
     def get_data_evento(self, obj):
