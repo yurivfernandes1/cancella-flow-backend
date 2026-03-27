@@ -29,6 +29,13 @@ class UserListSerializer(serializers.ModelSerializer):
 
     groups = GroupSerializer(many=True, read_only=True)
 
+    foto_url = serializers.SerializerMethodField(read_only=True)
+
+    def get_foto_url(self, obj):
+        if obj.foto_db_data:
+            return f"/access/profile/{obj.id}/foto-db/"
+        return None
+
     class Meta:
         model = User
         fields = [
@@ -47,4 +54,5 @@ class UserListSerializer(serializers.ModelSerializer):
             "unidade_identificacao",
             "unidade_id",
             "groups",
+            "foto_url",
         ]
