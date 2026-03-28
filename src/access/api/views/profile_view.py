@@ -346,6 +346,8 @@ class ProfileView(APIView):
                 # Se quem está fazendo a alteração não for o próprio usuário, marcar para envio de e-mail
                 if request.user.id != target_user.id:
                     senha_alterada_por_terceiro = True
+                    # Forçar alteração de senha no próximo login
+                    target_user.first_access = True
 
             was_inactive = not bool(target_user.is_active)
 
