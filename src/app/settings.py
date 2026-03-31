@@ -37,9 +37,9 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    "cancella-flow-backend.onrender.com",
     "cancellaflow.yurivf.com.br",
     "api-cancellaflow.yurivf.com.br",
+    "cancellaflow.com.br",
 ]
 
 
@@ -181,11 +181,10 @@ CORS_ALLOW_ALL_ORIGINS = True  # Apenas para desenvolvimento
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://cancella-flow-backend.onrender.com",
-    "http://cancella-flow-backend.onrender.com",
     "https://cancellaflow.yurivf.com.br",
-    # Adicione o domínio público da API incluindo o esquema (requer https/http)
     "https://api-cancellaflow.yurivf.com.br",
+    "https://cancellaflow.com.br",
+    "https://www.cancellaflow.com.br",
 ]
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
@@ -193,7 +192,7 @@ EMAIL_FROM = os.getenv("EMAIL_FROM", "noreply@cancellaflow.com.br")
 
 # URL base do frontend (usada em emails e links gerados pelo backend)
 FRONTEND_BASE_URL = os.getenv(
-    "FRONTEND_BASE_URL", "https://cancellaflow.yurivf.com.br"
+    "FRONTEND_BASE_URL", "https://cancellaflow.com.br"
 )
 
 CORS_ALLOW_CREDENTIALS = True
