@@ -37,8 +37,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    "cancellaflow.yurivf.com.br",
-    "api-cancellaflow.yurivf.com.br",
+    "api-cancellaflow.com.br",
     "cancellaflow.com.br",
 ]
 
@@ -185,6 +184,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://api-cancellaflow.yurivf.com.br",
     "https://cancellaflow.com.br",
     "https://www.cancellaflow.com.br",
+    "https://api-cancellaflow.com.br",
 ]
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
