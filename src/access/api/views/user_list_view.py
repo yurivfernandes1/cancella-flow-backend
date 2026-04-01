@@ -29,6 +29,14 @@ class UserListView(generics.ListAPIView):
                 queryset = queryset.filter(groups__name="Portaria")
             elif user_type == "moradores":
                 queryset = queryset.filter(groups__name="Moradores")
+            elif user_type == "cerimonialistas":
+                queryset = queryset.filter(groups__name="Cerimonialista")
+            elif user_type in ["recepcoes", "recepcao"]:
+                queryset = queryset.filter(groups__name="Recepção")
+            elif user_type in ["organizadores_evento", "organizadores"]:
+                queryset = queryset.filter(
+                    groups__name="Organizador do Evento"
+                )
 
         # Restringir por condomínio para Síndico (e não staff)
         if not user.is_staff and getattr(user, "condominio_id", None):

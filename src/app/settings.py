@@ -16,13 +16,20 @@ from pathlib import Path
 import dj_database_url
 from dotenv import load_dotenv
 
-# Carregar variáveis de ambiente do arquivo .env
-load_dotenv()
-
-DEBUG = True
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Carregar variáveis de ambiente de forma determinística,
+# independente do diretório atual de execução do processo.
+ENV_FILES = [
+    BASE_DIR.parent / ".env",  # cancella-flow-backend/.env
+    BASE_DIR / ".env",  # cancella-flow-backend/src/.env
+]
+for env_file in ENV_FILES:
+    if env_file.exists():
+        load_dotenv(env_file, override=True)
+
+DEBUG = True
 
 
 # Quick-start development settings - unsuitable for production

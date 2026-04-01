@@ -48,7 +48,7 @@ def _build_login_url(request):
 
     frontend_base = str(frontend_base or "").rstrip("/")
     if not frontend_base:
-        frontend_base = "https://cancellaflow.yurivf.com.br"
+        frontend_base = "https://cancellaflow.com.br"
 
     return f"{frontend_base}/login"
 
@@ -340,6 +340,8 @@ class ProfileView(APIView):
             # Campo especial para senha
             senha_alterada_por_terceiro = False
             nova_senha_fornecida = None
+            senha_email_enviado = False
+            senha_email_erro = None
             if "password" in request.data:
                 nova_senha_fornecida = request.data["password"]
                 target_user.set_password(nova_senha_fornecida)
@@ -539,18 +541,31 @@ class ProfileView(APIView):
 
             # Enviar e-mail informando usuário e nova senha quando alterado por administrador/síndico
             if senha_alterada_por_terceiro and nova_senha_fornecida:
-                try:
-                    _enviar_email_reset_senha(
-                        request, target_user, nova_senha_fornecida
-                    )
-                except Exception:
-                    pass
+                if not target_user.email:
+                    senha_email_erro = "Usuário sem e-mail cadastrado"
+                elif not django_settings.RESEND_API_KEY:
+                    senha_email_erro = "RESEND_API_KEY ausente"
+                elif not django_settings.EMAIL_FROM:
+                    senha_email_erro = "EMAIL_FROM ausente"
+                else:
+                    try:
+                        senha_email_enviado = _enviar_email_reset_senha(
+                            request, target_user, nova_senha_fornecida
+                        )
+                    except Exception:
+                        senha_email_enviado = False
+                    if not senha_email_enviado:
+                        senha_email_erro = (
+                            "Falha ao enviar e-mail pelo provedor"
+                        )
 
             return Response(
                 {
                     "message": "Atualizado com sucesso",
                     "email_enviado": email_enviado,
                     "aprovacao_realizada": activated_now,
+                    "senha_email_enviado": senha_email_enviado,
+                    "senha_email_erro": senha_email_erro,
                 }
             )
 

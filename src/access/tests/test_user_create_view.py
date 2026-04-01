@@ -107,3 +107,27 @@ class UserCreateViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Unidade", response.data.get("error", ""))
+
+    def test_admin_cria_cerimonialista_com_grupo_correto(self):
+        self.client.force_authenticate(user=self.admin)
+
+        payload = {
+            "user_type": "cerimonialista",
+            "username": "cerimonialista_teste",
+            "password": "senha123",
+            "first_name": "Carla",
+            "last_name": "Cerimonial",
+            "email": "carla.cerimonial@example.com",
+            "cpf": "12345678909",
+            "phone": "11955554444",
+        }
+
+        response = self.client.post(reverse("create"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["user_type"], "cerimonialista")
+
+        created_user = User.objects.get(username="cerimonialista_teste")
+        group_names = set(created_user.groups.values_list("name", flat=True))
+        self.assertIn("Cerimonialista", group_names)
+        self.assertIsNone(created_user.condominio)

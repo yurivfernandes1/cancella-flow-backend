@@ -8,13 +8,21 @@ sys.path.insert(0, str(BASE_DIR))
 
 import django
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'app.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "app.settings")
 django.setup()
 
 from django.contrib.auth.models import Group
 
-GROUP_NAMES = ["Admin", "Síndico", "Portaria", "Funcionário", "Morador"]
+GROUP_NAMES = [
+    "admin",
+    "Síndicos",
+    "Portaria",
+    "Moradores",
+    "Cerimonialista",
+    "Recepção",
+    "Organizador do Evento",
+]
 
 for name in GROUP_NAMES:
     g, created = Group.objects.get_or_create(name=name)
-    print("Group '{}': {}".format(name, 'created' if created else 'exists'))
+    print("Group '{}': {}".format(name, "created" if created else "exists"))
