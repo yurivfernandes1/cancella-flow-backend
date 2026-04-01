@@ -18,6 +18,8 @@ class ConvidadoListaCerimonialSerializer(serializers.ModelSerializer):
             "email",
             "vip",
             "qr_token",
+            "resposta_presenca",
+            "resposta_presenca_em",
             "entrada_confirmada",
             "entrada_em",
             "created_on",
@@ -26,6 +28,7 @@ class ConvidadoListaCerimonialSerializer(serializers.ModelSerializer):
             "id",
             "cpf_formatado",
             "qr_token",
+            "resposta_presenca_em",
             "entrada_em",
             "created_on",
         ]

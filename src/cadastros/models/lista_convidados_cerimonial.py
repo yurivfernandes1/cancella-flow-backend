@@ -2,6 +2,16 @@ import uuid
 
 from django.db import models
 
+RESPOSTA_PRESENCA_PENDENTE = "pendente"
+RESPOSTA_PRESENCA_CONFIRMADO = "confirmado"
+RESPOSTA_PRESENCA_RECUSADO = "recusado"
+
+RESPOSTA_PRESENCA_CHOICES = [
+    (RESPOSTA_PRESENCA_PENDENTE, "Pendente"),
+    (RESPOSTA_PRESENCA_CONFIRMADO, "Confirmado"),
+    (RESPOSTA_PRESENCA_RECUSADO, "Recusado"),
+]
+
 
 class ListaConvidadosCerimonial(models.Model):
     evento = models.OneToOneField(
@@ -45,6 +55,17 @@ class ConvidadoListaCerimonial(models.Model):
         unique=True,
         editable=False,
         verbose_name="Token QR Code",
+    )
+    resposta_presenca = models.CharField(
+        max_length=10,
+        choices=RESPOSTA_PRESENCA_CHOICES,
+        default=RESPOSTA_PRESENCA_PENDENTE,
+        verbose_name="Resposta de Presença",
+    )
+    resposta_presenca_em = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Respondido em",
     )
     entrada_confirmada = models.BooleanField(default=False)
     entrada_em = models.DateTimeField(null=True, blank=True)

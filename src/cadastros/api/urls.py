@@ -367,9 +367,24 @@ urlpatterns = [
         name="evento-cerimonial-funcionarios",
     ),
     path(
+        "eventos-cerimonial/funcionarios-cadastrados/",
+        views.evento_cerimonial_funcionarios_cadastro_view,
+        name="evento-cerimonial-funcionarios-cadastrados",
+    ),
+    path(
         "eventos-cerimonial/<int:pk>/funcionarios/<int:funcionario_pk>/",
         views.evento_cerimonial_funcionario_detail_view,
         name="evento-cerimonial-funcionario-detail",
+    ),
+    path(
+        "eventos-cerimonial/funcoes/",
+        views.funcao_festa_list_create_view,
+        name="evento-cerimonial-funcoes-list-create",
+    ),
+    path(
+        "eventos-cerimonial/funcoes/<int:funcao_pk>/",
+        views.funcao_festa_detail_view,
+        name="evento-cerimonial-funcoes-detail",
     ),
     # URLs para Listas de Convidados
     path(
@@ -442,6 +457,11 @@ urlpatterns = [
         "listas-convidados-cerimonial/confirmar-por-qrcode/",
         views.confirmar_por_qrcode_cerimonial_view,
         name="lista-convidados-cerimonial-confirmar-por-qrcode",
+    ),
+    path(
+        "listas-convidados-cerimonial/rsvp/<uuid:token>/",
+        views.resposta_presenca_public_cerimonial_view,
+        name="lista-convidados-cerimonial-rsvp-public",
     ),
     path(
         "listas-convidados-cerimonial/convidados-anteriores/",

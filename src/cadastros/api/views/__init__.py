@@ -56,7 +56,10 @@ from .evento_cerimonial_operacoes_views import (
     evento_cerimonial_convite_signup_view,
     evento_cerimonial_convites_list_view,
     evento_cerimonial_funcionario_detail_view,
+    evento_cerimonial_funcionarios_cadastro_view,
     evento_cerimonial_funcionarios_view,
+    funcao_festa_detail_view,
+    funcao_festa_list_create_view,
 )
 from .evento_cerimonial_views import (
     evento_cerimonial_create_view,
@@ -86,6 +89,7 @@ from .lista_convidados_cerimonial_views import (
     lista_convidados_cerimonial_detail_view,
     listas_convidados_cerimonial_view,
     remover_convidado_cerimonial_view,
+    resposta_presenca_public_cerimonial_view,
 )
 from .lista_convidados_views import (
     adicionar_convidado_view,
@@ -218,8 +222,11 @@ __all__ = [
     "evento_cerimonial_convite_generate_view",
     "evento_cerimonial_convite_public_detail_view",
     "evento_cerimonial_convite_signup_view",
+    "evento_cerimonial_funcionarios_cadastro_view",
     "evento_cerimonial_funcionarios_view",
     "evento_cerimonial_funcionario_detail_view",
+    "funcao_festa_list_create_view",
+    "funcao_festa_detail_view",
     "listas_convidados_cerimonial_view",
     "lista_convidados_cerimonial_detail_view",
     "adicionar_convidado_cerimonial_view",
@@ -231,4 +238,5 @@ __all__ = [
     "convidados_anteriores_cerimonial_view",
     "confirmar_por_qrcode_cerimonial_view",
     "download_qrcode_cerimonial_view",
+    "resposta_presenca_public_cerimonial_view",
 ]

@@ -7,6 +7,7 @@ from .models.evento_cerimonial import (
     EventoCerimonial,
     EventoCerimonialConvite,
     EventoCerimonialFuncionario,
+    FuncaoFesta,
 )
 from .models.lista_convidados_cerimonial import (
     ConvidadoListaCerimonial,
@@ -173,11 +174,24 @@ class EventoCerimonialFuncionarioAdmin(admin.ModelAdmin):
     list_display = (
         "nome",
         "evento",
+        "is_recepcao",
         "funcao",
         "pagamento_realizado",
         "valor_pagamento",
         "horario_entrada",
         "horario_saida",
     )
-    list_filter = ("pagamento_realizado", "funcao", "created_at")
+    list_filter = (
+        "is_recepcao",
+        "pagamento_realizado",
+        "funcao",
+        "created_at",
+    )
     search_fields = ("nome", "documento", "evento__nome", "usuario__username")
+
+
+@admin.register(FuncaoFesta)
+class FuncaoFestaAdmin(admin.ModelAdmin):
+    list_display = ("nome", "ativo", "created_by", "created_at", "updated_at")
+    list_filter = ("ativo", "created_at", "updated_at")
+    search_fields = ("nome", "created_by__username", "created_by__full_name")

@@ -145,6 +145,36 @@ class EventoCerimonialConvite(models.Model):
         return f"{self.get_tipo_display()} - {self.evento.nome}"
 
 
+class FuncaoFesta(models.Model):
+    nome = models.CharField(max_length=120, verbose_name="Nome")
+    ativo = models.BooleanField(default=True, verbose_name="Ativo")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="funcoes_festa_criadas",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="funcoes_festa_atualizadas",
+    )
+
+    class Meta:
+        verbose_name = "Função de Festa"
+        verbose_name_plural = "Funções de Festa"
+        ordering = ["nome", "id"]
+        unique_together = [["created_by", "nome"]]
+
+    def __str__(self):
+        return self.nome
+
+
 class EventoCerimonialFuncionario(models.Model):
     evento = models.ForeignKey(
         EventoCerimonial,
@@ -162,7 +192,19 @@ class EventoCerimonialFuncionario(models.Model):
     )
     nome = models.CharField(max_length=255, verbose_name="Nome")
     documento = models.CharField(max_length=14, verbose_name="Documento")
-    funcao = models.CharField(max_length=100, verbose_name="Função")
+    funcao = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name="Função",
+    )
+    is_recepcao = models.BooleanField(default=False, verbose_name="Recepção")
+    funcoes = models.ManyToManyField(
+        FuncaoFesta,
+        blank=True,
+        related_name="funcionarios_evento",
+        verbose_name="Funções",
+    )
     horario_entrada = models.DateTimeField(
         null=True,
         blank=True,

@@ -4,17 +4,19 @@ import json
 import urllib.request
 
 import qrcode
-import resend
 from django.conf import settings as django_settings
 from django.db.models import Max, Q
 from django.http import HttpResponse
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from ...models import (
+    RESPOSTA_PRESENCA_CONFIRMADO,
+    RESPOSTA_PRESENCA_RECUSADO,
     ConvidadoListaCerimonial,
     EventoCerimonial,
     ListaConvidadosCerimonial,
@@ -48,7 +50,36 @@ def _pode_confirmar_entrada(user, evento):
     return evento.cerimonialistas.filter(id=user.id).exists()
 
 
+def _resposta_presenca_label(value):
+    if value == RESPOSTA_PRESENCA_CONFIRMADO:
+        return "Confirmado"
+    if value == RESPOSTA_PRESENCA_RECUSADO:
+        return "Recusado"
+    return "Pendente"
+
+
+def _normalizar_resposta_presenca(value):
+    raw = str(value or "").strip().lower()
+    if raw in {"confirmar", "confirmado", "sim", "yes", "aceitar"}:
+        return RESPOSTA_PRESENCA_CONFIRMADO
+    if raw in {"recusar", "recusado", "nao", "não", "negar", "no"}:
+        return RESPOSTA_PRESENCA_RECUSADO
+    return None
+
+
+def _build_rsvp_url(request, token, resposta):
+    path = reverse(
+        "lista-convidados-cerimonial-rsvp-public",
+        kwargs={"token": token},
+    )
+    return request.build_absolute_uri(f"{path}?resposta={resposta}")
+
+
 def _enviar_qrcode_email_cerimonial(convidado, lista):
+    try:
+        import resend
+    except Exception:
+        return False
     if not convidado.email:
         return False
 
@@ -109,24 +140,115 @@ def _enviar_qrcode_email_cerimonial(convidado, lista):
     </div>
     """
 
-    resend.api_key = api_key
-    resend.Emails.send(
-        {
-            "from": email_from,
-            "to": [convidado.email],
-            "subject": f"Seu convite para {evento.nome}",
-            "html": html_body,
-            "attachments": [
-                {
-                    "filename": "qrcode.png",
-                    "content": qr_base64,
-                    "content_id": "qrcode",
-                    "disposition": "inline",
-                }
-            ],
-        }
+    try:
+        resend.api_key = api_key
+        resend.Emails.send(
+            {
+                "from": email_from,
+                "to": [convidado.email],
+                "subject": f"Seu convite para {evento.nome}",
+                "html": html_body,
+                "attachments": [
+                    {
+                        "filename": "qrcode.png",
+                        "content": qr_base64,
+                        "content_id": "qrcode",
+                        "disposition": "inline",
+                    }
+                ],
+            }
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _enviar_confirmacao_presenca_email_cerimonial(request, convidado, lista):
+    try:
+        import resend
+    except Exception:
+        return False
+
+    if not convidado.email:
+        return False
+
+    api_key = django_settings.RESEND_API_KEY
+    email_from = django_settings.EMAIL_FROM
+    if not api_key:
+        return False
+
+    evento = lista.evento
+    data_evento = (
+        evento.datetime_inicio.strftime("%d/%m/%Y %H:%M")
+        if evento.datetime_inicio
+        else "A confirmar"
     )
-    return True
+
+    endereco = ""
+    try:
+        from ..serializers.evento_cerimonial_serializer import (
+            EventoCerimonialSerializer,
+        )
+
+        endereco = EventoCerimonialSerializer().get_endereco_completo(evento)
+    except Exception:
+        endereco = ""
+
+    confirmar_url = _build_rsvp_url(
+        request,
+        convidado.qr_token,
+        RESPOSTA_PRESENCA_CONFIRMADO,
+    )
+    recusar_url = _build_rsvp_url(
+        request,
+        convidado.qr_token,
+        RESPOSTA_PRESENCA_RECUSADO,
+    )
+
+    html_body = f"""
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+      <div style="background:#19294a;padding:20px 24px;text-align:center;">
+        <p style="color:#ffffff;margin:0;font-size:1rem;font-weight:600;">Confirmação de Presença</p>
+      </div>
+      <div style="padding:24px;background:#ffffff;">
+        <h2 style="color:#19294a;margin:0 0 12px;font-size:1.1rem;">Olá, {convidado.nome}!</h2>
+        <p style="color:#374151;line-height:1.6;margin:0 0 16px;">
+          Você foi convidado(a) para o evento:<br/>
+          <strong style="font-size:1.05rem;color:#2abb98;">{evento.nome}</strong>
+        </p>
+        <table style="width:100%;border-collapse:collapse;margin:0 0 20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+          <tr>
+            <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:120px;">Data</td>
+            <td style="padding:8px 12px;color:#111827;font-weight:500;">{data_evento}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:120px;">Local</td>
+            <td style="padding:8px 12px;color:#111827;font-weight:500;">{endereco or "-"}</td>
+          </tr>
+        </table>
+        <p style="color:#1f2937;line-height:1.6;margin:0 0 12px;">Por favor, confirme sua presença clicando em um dos botões abaixo:</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <a href="{confirmar_url}" style="background:#16a34a;color:#fff;text-decoration:none;padding:10px 14px;border-radius:8px;font-weight:600;font-size:0.88rem;">Confirmar presença</a>
+          <a href="{recusar_url}" style="background:#dc2626;color:#fff;text-decoration:none;padding:10px 14px;border-radius:8px;font-weight:600;font-size:0.88rem;">Não poderei ir</a>
+        </div>
+        <p style="color:#64748b;font-size:0.8rem;margin:14px 0 0;">Após confirmar presença, você receberá por e-mail o QR Code de acesso.</p>
+      </div>
+    </div>
+    """
+
+    try:
+        resend.api_key = api_key
+        resend.Emails.send(
+            {
+                "from": email_from,
+                "to": [convidado.email],
+                "subject": f"Confirme sua presença em {evento.nome}",
+                "html": html_body,
+            }
+        )
+        return True
+    except Exception:
+        return False
 
 
 def _to_bool(value):
@@ -323,6 +445,13 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
             {"error": "Nome do convidado é obrigatório."},
             status=status.HTTP_400_BAD_REQUEST,
         )
+    if not email:
+        return Response(
+            {
+                "error": "E-mail é obrigatório para enviar a confirmação de presença."
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     if ConvidadoListaCerimonial.objects.filter(
         lista=lista, cpf=cpf_digits
@@ -340,8 +469,23 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
         vip=vip,
     )
 
+    confirmacao_email_enviado = _enviar_confirmacao_presenca_email_cerimonial(
+        request, convidado, lista
+    )
+    if not confirmacao_email_enviado:
+        convidado.delete()
+        return Response(
+            {
+                "error": "Não foi possível enviar o e-mail de confirmação. O convidado não foi adicionado."
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    response_data = ConvidadoListaCerimonialSerializer(convidado).data
+    response_data["confirmacao_email_enviado"] = True
+
     return Response(
-        ConvidadoListaCerimonialSerializer(convidado).data,
+        response_data,
         status=status.HTTP_201_CREATED,
     )
 
@@ -540,6 +684,14 @@ def enviar_qrcode_cerimonial_view(request, lista_pk, convidado_pk):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    if convidado.resposta_presenca != RESPOSTA_PRESENCA_CONFIRMADO:
+        return Response(
+            {
+                "error": "Envio de QR Code permitido apenas para convidados com presença confirmada."
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     try:
         enviado = _enviar_qrcode_email_cerimonial(convidado, lista)
     except Exception as exc:
@@ -719,6 +871,65 @@ def confirmar_por_qrcode_cerimonial_view(request):
 
 
 @api_view(["GET"])
+@permission_classes([AllowAny])
+def resposta_presenca_public_cerimonial_view(request, token):
+    resposta = _normalizar_resposta_presenca(
+        request.query_params.get("resposta", "")
+    )
+    if resposta is None:
+        return HttpResponse(
+            "<h2>Resposta inválida</h2><p>Use os links de confirmação enviados por e-mail.</p>",
+            status=400,
+            content_type="text/html; charset=utf-8",
+        )
+
+    try:
+        convidado = ConvidadoListaCerimonial.objects.select_related(
+            "lista", "lista__evento"
+        ).get(qr_token=token)
+    except ConvidadoListaCerimonial.DoesNotExist:
+        return HttpResponse(
+            "<h2>Convite não encontrado</h2><p>Este link de confirmação é inválido ou expirou.</p>",
+            status=404,
+            content_type="text/html; charset=utf-8",
+        )
+
+    convidado.resposta_presenca = resposta
+    convidado.resposta_presenca_em = timezone.now()
+    convidado.save(update_fields=["resposta_presenca", "resposta_presenca_em"])
+
+    qr_enviado = False
+    if resposta == RESPOSTA_PRESENCA_CONFIRMADO:
+        qr_enviado = _enviar_qrcode_email_cerimonial(
+            convidado, convidado.lista
+        )
+
+    status_label = _resposta_presenca_label(convidado.resposta_presenca)
+    mensagem_qr = ""
+    if resposta == RESPOSTA_PRESENCA_CONFIRMADO:
+        if qr_enviado:
+            mensagem_qr = "<p style='color:#166534;'>Seu QR Code de acesso foi enviado para o seu e-mail.</p>"
+        else:
+            mensagem_qr = "<p style='color:#92400e;'>Não foi possível enviar o QR Code agora. Peça para o cerimonial reenviar pela lista de convidados.</p>"
+
+    evento_nome = convidado.lista.evento.nome
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:640px;margin:32px auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+      <div style="background:#19294a;padding:18px 22px;">
+        <p style="margin:0;color:#fff;font-size:1rem;font-weight:700;">Resposta registrada com sucesso</p>
+      </div>
+      <div style="padding:22px;background:#fff;">
+        <h2 style="margin:0 0 8px;color:#0f172a;font-size:1.2rem;">{convidado.nome}</h2>
+        <p style="margin:0 0 6px;color:#334155;">Evento: <strong>{evento_nome}</strong></p>
+        <p style="margin:0 0 16px;color:#334155;">Status da sua presença: <strong>{status_label}</strong></p>
+        {mensagem_qr}
+      </div>
+    </div>
+    """
+    return HttpResponse(html, content_type="text/html; charset=utf-8")
+
+
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def download_qrcode_cerimonial_view(request):
     from PIL import Image, ImageDraw, ImageFont
@@ -791,5 +1002,6 @@ __all__ = [
     "buscar_cpf_simples_cerimonial_view",
     "convidados_anteriores_cerimonial_view",
     "confirmar_por_qrcode_cerimonial_view",
+    "resposta_presenca_public_cerimonial_view",
     "download_qrcode_cerimonial_view",
 ]
