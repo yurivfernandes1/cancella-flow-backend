@@ -19,6 +19,8 @@ class UserListView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         queryset = User.objects.exclude(id=user.id)
+        is_cerimonialista = user.groups.filter(name="Cerimonialista").exists()
+        is_sindico = user.groups.filter(name="Síndicos").exists()
 
         # Filtrar por tipo de usuário
         user_type = self.request.query_params.get("type", "")
@@ -38,8 +40,24 @@ class UserListView(generics.ListAPIView):
                     groups__name="Organizador do Evento"
                 )
 
+        # Cerimonialista: apenas cadastros de recepção/organizador criados por ele
+        if is_cerimonialista and not user.is_staff:
+            tipos_permitidos = {
+                "recepcao",
+                "recepcoes",
+                "organizadores_evento",
+                "organizadores",
+            }
+            if user_type not in tipos_permitidos:
+                return queryset.none()
+            queryset = queryset.filter(created_by=user)
+
         # Restringir por condomínio para Síndico (e não staff)
-        if not user.is_staff and getattr(user, "condominio_id", None):
+        if (
+            is_sindico
+            and not user.is_staff
+            and getattr(user, "condominio_id", None)
+        ):
             queryset = queryset.filter(condominio_id=user.condominio_id)
 
         # Aplicar busca se houver termo de pesquisa

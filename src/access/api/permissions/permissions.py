@@ -7,4 +7,5 @@ class IsStaffOrSindico(permissions.BasePermission):
             request.user.is_staff
             or request.user.groups.filter(name__iexact="admin").exists()
             or request.user.groups.filter(name="Síndicos").exists()
+            or request.user.groups.filter(name="Cerimonialista").exists()
         )

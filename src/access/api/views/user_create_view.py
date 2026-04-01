@@ -33,7 +33,9 @@ def _build_login_url(request):
     return f"{frontend_base}/login"
 
 
-def _enviar_email_novo_cerimonialista(request, user, senha_temporaria):
+def _enviar_email_novo_usuario_com_acesso(
+    request, user, senha_temporaria, perfil_label
+):
     import resend
 
     if not user.email:
@@ -55,7 +57,7 @@ def _enviar_email_novo_cerimonialista(request, user, senha_temporaria):
     <div style="padding:24px;background:#ffffff;">
         <h2 style="color:#19294a;margin:0 0 12px;font-size:1.1rem;">Olá, {nome}!</h2>
         <p style="color:#374151;line-height:1.6;margin:0 0 16px;">
-            Seu cadastro de <strong>Cerimonialista</strong> foi criado com sucesso.
+            Seu cadastro de <strong>{perfil_label}</strong> foi criado com sucesso.
             Use os dados abaixo para seu primeiro acesso:
         </p>
         <table style="width:100%;border-collapse:collapse;margin:0 0 20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
@@ -101,13 +103,11 @@ class UserCreateView(APIView):
         # Verificar permissões baseadas no tipo de usuário que está sendo criado
         user_type = request.data.get("user_type", "funcionario")
 
-        # Administradores podem criar perfis administrativos e de eventos
+        # Perfis administrativos continuam restritos ao admin/staff
         if user_type in [
             "sindico",
             "sindico_morador",
             "cerimonialista",
-            "recepcao",
-            "organizador_evento",
         ]:
             if not (
                 request.user.is_staff
@@ -117,6 +117,18 @@ class UserCreateView(APIView):
                     {
                         "error": "Apenas administradores podem criar este tipo de usuário"
                     },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        # Cerimonialista também pode criar organizador/recepção
+        elif user_type in ["recepcao", "organizador_evento"]:
+            if not (
+                request.user.is_staff
+                or request.user.groups.filter(name__iexact="admin").exists()
+                or request.user.groups.filter(name="Cerimonialista").exists()
+            ):
+                return Response(
+                    {"error": "Acesso negado para criar este tipo de usuário"},
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
@@ -135,12 +147,7 @@ class UserCreateView(APIView):
         try:
             # Determinar condomínio
             condominio = None
-            if user_type in [
-                "sindico",
-                "sindico_morador",
-                "recepcao",
-                "organizador_evento",
-            ]:
+            if user_type in ["sindico", "sindico_morador"]:
                 condominio_id = request.data.get("condominio_id")
                 if not condominio_id:
                     return Response(
@@ -156,6 +163,20 @@ class UserCreateView(APIView):
                         {"error": "Condomínio não encontrado"},
                         status=status.HTTP_404_NOT_FOUND,
                     )
+            elif user_type in ["recepcao", "organizador_evento"]:
+                condominio_id = request.data.get("condominio_id") or (
+                    request.user.condominio.id
+                    if getattr(request.user, "condominio", None)
+                    else None
+                )
+                if condominio_id:
+                    try:
+                        condominio = Condominio.objects.get(id=condominio_id)
+                    except Condominio.DoesNotExist:
+                        return Response(
+                            {"error": "Condomínio não encontrado"},
+                            status=status.HTTP_404_NOT_FOUND,
+                        )
             elif user_type == "cerimonialista":
                 # Cerimonialista não é vinculado a condomínio.
                 condominio = None
@@ -256,7 +277,20 @@ class UserCreateView(APIView):
 
                 email_enviado = False
                 email_erro = None
-                if user_type == "cerimonialista" and senha_temporaria:
+                if (
+                    user_type
+                    in {
+                        "cerimonialista",
+                        "organizador_evento",
+                        "recepcao",
+                    }
+                    and senha_temporaria
+                ):
+                    perfil_label_map = {
+                        "cerimonialista": "Cerimonialista",
+                        "organizador_evento": "Organizador do Evento",
+                        "recepcao": "Recepção",
+                    }
                     if not user.email:
                         email_erro = "Usuário sem e-mail cadastrado"
                     elif not django_settings.RESEND_API_KEY:
@@ -264,10 +298,11 @@ class UserCreateView(APIView):
                     elif not django_settings.EMAIL_FROM:
                         email_erro = "EMAIL_FROM ausente"
                     else:
-                        email_enviado = _enviar_email_novo_cerimonialista(
+                        email_enviado = _enviar_email_novo_usuario_com_acesso(
                             request,
                             user,
                             senha_temporaria,
+                            perfil_label_map.get(user_type, "Usuário"),
                         )
                         if not email_enviado:
                             email_erro = "Falha ao enviar e-mail pelo provedor"

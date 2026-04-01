@@ -329,6 +329,25 @@ class ProfileView(APIView):
                                 },
                                 status=status.HTTP_403_FORBIDDEN,
                             )
+                    elif request.user.groups.filter(
+                        name="Cerimonialista"
+                    ).exists():
+                        candidate = User.objects.get(id=user_id)
+                        pode_editar_grupo = candidate.groups.filter(
+                            name__in=["Organizador do Evento", "Recepção"]
+                        ).exists()
+                        if (
+                            pode_editar_grupo
+                            and candidate.created_by_id == request.user.id
+                        ):
+                            target_user = candidate
+                        else:
+                            return Response(
+                                {
+                                    "error": "Você não tem permissão para editar este usuário."
+                                },
+                                status=status.HTTP_403_FORBIDDEN,
+                            )
                     else:
                         return Response(
                             {
