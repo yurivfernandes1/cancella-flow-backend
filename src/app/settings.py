@@ -182,7 +182,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "https://cancellaflow.com.br",
     "https://www.cancellaflow.com.br",
-    "https://api-backend.cancellaflow.com.br/",
+    "https://api-backend.cancellaflow.com.br",
 ]
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
