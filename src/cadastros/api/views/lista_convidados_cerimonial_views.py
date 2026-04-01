@@ -283,6 +283,15 @@ def _to_bool(value):
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _lista_atingiu_limite(lista):
+    limite = max(int(lista.evento.numero_pessoas or 0), 0)
+    if limite <= 0:
+        return False, limite
+
+    total = ConvidadoListaCerimonial.objects.filter(lista=lista).count()
+    return total >= limite, limite
+
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def listas_convidados_cerimonial_view(request):
@@ -458,6 +467,7 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
     nome = str(request.data.get("nome", "")).strip()
     email = str(request.data.get("email", "")).strip()
     vip = _to_bool(request.data.get("vip", False))
+    enviar_email = _to_bool(request.data.get("enviar_email", True))
 
     if len(cpf_digits) != 11:
         return Response(
@@ -477,6 +487,15 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    atingiu_limite, limite = _lista_atingiu_limite(lista)
+    if atingiu_limite:
+        return Response(
+            {
+                "error": f"Limite de convidados atingido para este evento ({limite})."
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     if ConvidadoListaCerimonial.objects.filter(
         lista=lista, cpf=cpf_digits
     ).exists():
@@ -491,7 +510,16 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
         nome=nome,
         email=email,
         vip=vip,
+        created_by=request.user,
     )
+
+    if not enviar_email:
+        response_data = ConvidadoListaCerimonialSerializer(convidado).data
+        response_data["confirmacao_email_enviado"] = False
+        return Response(
+            response_data,
+            status=status.HTTP_201_CREATED,
+        )
 
     confirmacao_email_enviado = _enviar_confirmacao_presenca_email_cerimonial(
         request, convidado, lista
@@ -511,6 +539,92 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
     return Response(
         response_data,
         status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def finalizar_lista_convidados_cerimonial_view(request, lista_pk):
+    try:
+        lista = (
+            ListaConvidadosCerimonial.objects.select_related("evento")
+            .prefetch_related(
+                "convidados",
+                "evento__cerimonialistas",
+                "evento__organizadores",
+            )
+            .get(pk=lista_pk)
+        )
+    except ListaConvidadosCerimonial.DoesNotExist:
+        return Response(
+            {"error": "Lista não encontrada."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if not _pode_editar_lista(request.user, lista.evento):
+        return Response(
+            {"error": "Sem permissão para finalizar esta lista."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    convidados = list(lista.convidados.all())
+    if not convidados:
+        return Response(
+            {"error": "A lista não possui convidados para envio."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    enviados_confirmacao = 0
+    enviados_qr = 0
+    falhas = []
+
+    for convidado in convidados:
+        if not convidado.email:
+            falhas.append(
+                {
+                    "convidado_id": convidado.id,
+                    "nome": convidado.nome,
+                    "erro": "Convidado sem e-mail cadastrado.",
+                }
+            )
+            continue
+
+        if convidado.resposta_presenca == RESPOSTA_PRESENCA_CONFIRMADO:
+            enviado = _enviar_qrcode_email_cerimonial(convidado, lista)
+            if enviado:
+                enviados_qr += 1
+            else:
+                falhas.append(
+                    {
+                        "convidado_id": convidado.id,
+                        "nome": convidado.nome,
+                        "erro": "Não foi possível enviar o QR Code.",
+                    }
+                )
+            continue
+
+        enviado = _enviar_confirmacao_presenca_email_cerimonial(
+            request, convidado, lista
+        )
+        if enviado:
+            enviados_confirmacao += 1
+        else:
+            falhas.append(
+                {
+                    "convidado_id": convidado.id,
+                    "nome": convidado.nome,
+                    "erro": "Não foi possível enviar o e-mail de confirmação.",
+                }
+            )
+
+    return Response(
+        {
+            "success": len(falhas) == 0,
+            "total_convidados": len(convidados),
+            "enviados_confirmacao": enviados_confirmacao,
+            "enviados_qr": enviados_qr,
+            "falhas": falhas,
+        }
     )
 
 
@@ -809,6 +923,8 @@ def convidados_anteriores_cerimonial_view(request):
             Q(lista__evento__cerimonialistas=user)
             | Q(lista__evento__organizadores=user)
         ).distinct()
+        if _is_organizador(user) and not _is_cerimonialista(user):
+            qs = qs.filter(created_by=user)
 
     if q:
         cpf_q = "".join(c for c in q if c.isdigit())
@@ -1034,6 +1150,7 @@ __all__ = [
     "listas_convidados_cerimonial_view",
     "lista_convidados_cerimonial_detail_view",
     "adicionar_convidado_cerimonial_view",
+    "finalizar_lista_convidados_cerimonial_view",
     "atualizar_convidado_cerimonial_view",
     "remover_convidado_cerimonial_view",
     "confirmar_entrada_cerimonial_view",

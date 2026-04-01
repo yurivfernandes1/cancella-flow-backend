@@ -484,6 +484,11 @@ urlpatterns = [
         name="lista-convidados-cerimonial-adicionar",
     ),
     path(
+        "listas-convidados-cerimonial/<int:lista_pk>/finalizar/",
+        views.finalizar_lista_convidados_cerimonial_view,
+        name="lista-convidados-cerimonial-finalizar",
+    ),
+    path(
         "listas-convidados-cerimonial/<int:lista_pk>/convidados/<int:convidado_pk>/update/",
         views.atualizar_convidado_cerimonial_view,
         name="lista-convidados-cerimonial-atualizar-convidado",

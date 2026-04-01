@@ -1,5 +1,6 @@
 import uuid
 
+from django.conf import settings
 from django.db import models
 
 RESPOSTA_PRESENCA_PENDENTE = "pendente"
@@ -70,6 +71,13 @@ class ConvidadoListaCerimonial(models.Model):
     entrada_confirmada = models.BooleanField(default=False)
     entrada_em = models.DateTimeField(null=True, blank=True)
     created_on = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="convidados_cerimonial_criados",
+    )
 
     class Meta:
         verbose_name = "Convidado da Lista (Cerimonial)"
