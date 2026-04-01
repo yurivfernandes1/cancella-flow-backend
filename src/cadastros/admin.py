@@ -3,8 +3,8 @@ from django.contrib import admin
 from .models.aviso import Aviso
 from .models.condominio import Condominio
 from .models.encomenda import Encomenda
-from .models.evento_cerimonial import EventoCerimonial
 from .models.evento_cerimonial import (
+    EventoCerimonial,
     EventoCerimonialConvite,
     EventoCerimonialFuncionario,
 )
@@ -143,9 +143,22 @@ class ListaConvidadosCerimonialAdmin(admin.ModelAdmin):
 
 @admin.register(ConvidadoListaCerimonial)
 class ConvidadoListaCerimonialAdmin(admin.ModelAdmin):
-    list_display = ("nome", "cpf", "vip", "lista", "entrada_confirmada", "created_on")
+    list_display = (
+        "nome",
+        "cpf",
+        "vip",
+        "lista",
+        "entrada_confirmada",
+        "created_on",
+    )
     list_filter = ("vip", "entrada_confirmada", "created_on")
-    search_fields = ("nome", "cpf", "email", "lista__titulo", "lista__evento__nome")
+    search_fields = (
+        "nome",
+        "cpf",
+        "email",
+        "lista__titulo",
+        "lista__evento__nome",
+    )
 
 
 @admin.register(EventoCerimonialConvite)

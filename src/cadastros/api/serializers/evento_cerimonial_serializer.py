@@ -128,7 +128,9 @@ class EventoCerimonialSerializer(serializers.ModelSerializer):
                 }
             )
 
-        cep = self._normalizar_cep(attrs.get("cep", self.instance.cep if self.instance else ""))
+        cep = self._normalizar_cep(
+            attrs.get("cep", self.instance.cep if self.instance else "")
+        )
         if cep and len(cep) != 8:
             raise serializers.ValidationError(
                 {"cep": "Informe um CEP válido com 8 dígitos."}
@@ -163,7 +165,9 @@ class EventoCerimonialSerializer(serializers.ModelSerializer):
             )
 
         if "_cerimonialistas" in attrs and current_user:
-            if not any(u.id == current_user.id for u in attrs["_cerimonialistas"]):
+            if not any(
+                u.id == current_user.id for u in attrs["_cerimonialistas"]
+            ):
                 attrs["_cerimonialistas"].append(current_user)
 
         if not self.instance and not attrs.get("_cerimonialistas"):
@@ -231,7 +235,9 @@ class EventoCerimonialSerializer(serializers.ModelSerializer):
 
         logradouro = (dados or {}).get("street", "")
         if logradouro:
-            endereco_base = f"{logradouro}, {obj.numero}" if obj.numero else logradouro
+            endereco_base = (
+                f"{logradouro}, {obj.numero}" if obj.numero else logradouro
+            )
             partes.append(endereco_base)
         elif obj.numero:
             partes.append(f"Número {obj.numero}")
@@ -292,12 +298,14 @@ class EventoCerimonialListSerializer(serializers.ModelSerializer):
         ]
 
     def get_endereco_completo(self, obj):
-        return EventoCerimonialSerializer(context=self.context).get_endereco_completo(
-            obj
-        )
+        return EventoCerimonialSerializer(
+            context=self.context
+        ).get_endereco_completo(obj)
 
     def get_imagem_url(self, obj):
-        return EventoCerimonialSerializer(context=self.context).get_imagem_url(obj)
+        return EventoCerimonialSerializer(context=self.context).get_imagem_url(
+            obj
+        )
 
     def get_lista_convidados_id(self, obj):
         lista = getattr(obj, "lista_convidados", None)

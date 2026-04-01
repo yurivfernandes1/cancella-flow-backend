@@ -1,5 +1,6 @@
-import django.db.models.deletion
 import uuid
+
+import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
 
@@ -23,8 +24,14 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("nome", models.CharField(max_length=255, verbose_name="Nome")),
-                ("datetime_inicio", models.DateTimeField(verbose_name="Início")),
+                (
+                    "nome",
+                    models.CharField(max_length=255, verbose_name="Nome"),
+                ),
+                (
+                    "datetime_inicio",
+                    models.DateTimeField(verbose_name="Início"),
+                ),
                 ("datetime_fim", models.DateTimeField(verbose_name="Término")),
                 (
                     "cep",
@@ -163,16 +170,26 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("titulo", models.CharField(max_length=255, verbose_name="Título")),
+                (
+                    "titulo",
+                    models.CharField(max_length=255, verbose_name="Título"),
+                ),
                 (
                     "descricao",
-                    models.TextField(blank=True, default="", verbose_name="Descrição"),
+                    models.TextField(
+                        blank=True, default="", verbose_name="Descrição"
+                    ),
                 ),
                 (
                     "data_evento",
-                    models.DateField(blank=True, null=True, verbose_name="Data do Evento"),
+                    models.DateField(
+                        blank=True, null=True, verbose_name="Data do Evento"
+                    ),
                 ),
-                ("ativa", models.BooleanField(default=True, verbose_name="Ativa")),
+                (
+                    "ativa",
+                    models.BooleanField(default=True, verbose_name="Ativa"),
+                ),
                 ("created_on", models.DateTimeField(auto_now_add=True)),
                 ("updated_on", models.DateTimeField(auto_now=True)),
                 (
@@ -203,7 +220,10 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("cpf", models.CharField(max_length=11, verbose_name="CPF")),
-                ("nome", models.CharField(max_length=255, verbose_name="Nome")),
+                (
+                    "nome",
+                    models.CharField(max_length=255, verbose_name="Nome"),
+                ),
                 (
                     "email",
                     models.EmailField(
@@ -213,7 +233,10 @@ class Migration(migrations.Migration):
                         verbose_name="E-mail",
                     ),
                 ),
-                ("vip", models.BooleanField(default=False, verbose_name="VIP")),
+                (
+                    "vip",
+                    models.BooleanField(default=False, verbose_name="VIP"),
+                ),
                 (
                     "qr_token",
                     models.UUIDField(
@@ -307,7 +330,10 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("nome", models.CharField(max_length=255, verbose_name="Nome")),
+                (
+                    "nome",
+                    models.CharField(max_length=255, verbose_name="Nome"),
+                ),
                 (
                     "documento",
                     models.CharField(max_length=14, verbose_name="Documento"),

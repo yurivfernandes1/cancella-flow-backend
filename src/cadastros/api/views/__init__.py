@@ -50,13 +50,13 @@ from .espaco_views import (
     espaco_reserva_update_view,
     espaco_update_view,
 )
-from .evento_views import (
-    evento_create_view,
-    evento_delete_view,
-    evento_detail_view,
-    evento_imagem_db_view,
-    evento_list_view,
-    evento_update_view,
+from .evento_cerimonial_operacoes_views import (
+    evento_cerimonial_convite_generate_view,
+    evento_cerimonial_convite_public_detail_view,
+    evento_cerimonial_convite_signup_view,
+    evento_cerimonial_convites_list_view,
+    evento_cerimonial_funcionario_detail_view,
+    evento_cerimonial_funcionarios_view,
 )
 from .evento_cerimonial_views import (
     evento_cerimonial_create_view,
@@ -66,13 +66,26 @@ from .evento_cerimonial_views import (
     evento_cerimonial_list_view,
     evento_cerimonial_update_view,
 )
-from .evento_cerimonial_operacoes_views import (
-    evento_cerimonial_convite_generate_view,
-    evento_cerimonial_convite_public_detail_view,
-    evento_cerimonial_convite_signup_view,
-    evento_cerimonial_convites_list_view,
-    evento_cerimonial_funcionario_detail_view,
-    evento_cerimonial_funcionarios_view,
+from .evento_views import (
+    evento_create_view,
+    evento_delete_view,
+    evento_detail_view,
+    evento_imagem_db_view,
+    evento_list_view,
+    evento_update_view,
+)
+from .lista_convidados_cerimonial_views import (
+    adicionar_convidado_cerimonial_view,
+    atualizar_convidado_cerimonial_view,
+    buscar_cpf_simples_cerimonial_view,
+    confirmar_entrada_cerimonial_view,
+    confirmar_por_qrcode_cerimonial_view,
+    convidados_anteriores_cerimonial_view,
+    download_qrcode_cerimonial_view,
+    enviar_qrcode_cerimonial_view,
+    lista_convidados_cerimonial_detail_view,
+    listas_convidados_cerimonial_view,
+    remover_convidado_cerimonial_view,
 )
 from .lista_convidados_views import (
     adicionar_convidado_view,
@@ -87,19 +100,6 @@ from .lista_convidados_views import (
     lista_convidados_detail_view,
     listas_convidados_view,
     remover_convidado_view,
-)
-from .lista_convidados_cerimonial_views import (
-    adicionar_convidado_cerimonial_view,
-    atualizar_convidado_cerimonial_view,
-    buscar_cpf_simples_cerimonial_view,
-    confirmar_entrada_cerimonial_view,
-    confirmar_por_qrcode_cerimonial_view,
-    convidados_anteriores_cerimonial_view,
-    download_qrcode_cerimonial_view,
-    enviar_qrcode_cerimonial_view,
-    lista_convidados_cerimonial_detail_view,
-    listas_convidados_cerimonial_view,
-    remover_convidado_cerimonial_view,
 )
 from .ocorrencia_views import (
     ocorrencia_create_view,

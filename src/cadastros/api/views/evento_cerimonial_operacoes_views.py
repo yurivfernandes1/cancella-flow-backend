@@ -22,7 +22,10 @@ from ..serializers.evento_cerimonial_aux_serializer import (
     EventoCerimonialConviteSerializer,
     EventoCerimonialFuncionarioSerializer,
 )
-from .evento_cerimonial_views import _is_participante_evento, _pode_editar_evento
+from .evento_cerimonial_views import (
+    _is_participante_evento,
+    _pode_editar_evento,
+)
 
 
 def _frontend_base(request):
@@ -70,7 +73,9 @@ def _normalize_phone(value):
 @permission_classes([IsAuthenticated])
 def evento_cerimonial_convites_list_view(request, pk):
     try:
-        evento = EventoCerimonial.objects.prefetch_related("cerimonialistas").get(pk=pk)
+        evento = EventoCerimonial.objects.prefetch_related(
+            "cerimonialistas"
+        ).get(pk=pk)
     except EventoCerimonial.DoesNotExist:
         return Response(
             {"error": "Evento não encontrado."},
@@ -83,7 +88,9 @@ def evento_cerimonial_convites_list_view(request, pk):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    convites = EventoCerimonialConvite.objects.filter(evento=evento, ativo=True)
+    convites = EventoCerimonialConvite.objects.filter(
+        evento=evento, ativo=True
+    )
     return Response([_enriquecer_convite(request, c) for c in convites])
 
 
@@ -91,7 +98,9 @@ def evento_cerimonial_convites_list_view(request, pk):
 @permission_classes([IsAuthenticated])
 def evento_cerimonial_convite_generate_view(request, pk, tipo):
     try:
-        evento = EventoCerimonial.objects.prefetch_related("cerimonialistas").get(pk=pk)
+        evento = EventoCerimonial.objects.prefetch_related(
+            "cerimonialistas"
+        ).get(pk=pk)
     except EventoCerimonial.DoesNotExist:
         return Response(
             {"error": "Evento não encontrado."},
@@ -100,7 +109,9 @@ def evento_cerimonial_convite_generate_view(request, pk, tipo):
 
     if not _pode_editar_evento(request.user, evento):
         return Response(
-            {"error": "Somente cerimonialistas podem gerar convites do evento."},
+            {
+                "error": "Somente cerimonialistas podem gerar convites do evento."
+            },
             status=status.HTTP_403_FORBIDDEN,
         )
 
@@ -126,7 +137,9 @@ def evento_cerimonial_convite_generate_view(request, pk, tipo):
         tipo=tipo,
         created_by=request.user,
     )
-    return Response(_enriquecer_convite(request, convite), status=status.HTTP_201_CREATED)
+    return Response(
+        _enriquecer_convite(request, convite), status=status.HTTP_201_CREATED
+    )
 
 
 @api_view(["GET"])
@@ -218,7 +231,9 @@ def evento_cerimonial_convite_signup_view(request, token):
             {"error": "CPF inválido."},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    if User.objects.filter(Q(cpf=cpf_digits) | Q(cpf__endswith=cpf_digits)).exists():
+    if User.objects.filter(
+        Q(cpf=cpf_digits) | Q(cpf__endswith=cpf_digits)
+    ).exists():
         return Response(
             {"error": "Este CPF já está em uso."},
             status=status.HTTP_400_BAD_REQUEST,
@@ -283,7 +298,9 @@ def evento_cerimonial_convite_signup_view(request, token):
 @permission_classes([IsAuthenticated])
 def evento_cerimonial_funcionarios_view(request, pk):
     try:
-        evento = EventoCerimonial.objects.prefetch_related("cerimonialistas", "funcionarios").get(pk=pk)
+        evento = EventoCerimonial.objects.prefetch_related(
+            "cerimonialistas", "funcionarios"
+        ).get(pk=pk)
     except EventoCerimonial.DoesNotExist:
         return Response(
             {"error": "Evento não encontrado."},
@@ -293,16 +310,22 @@ def evento_cerimonial_funcionarios_view(request, pk):
     if request.method == "GET":
         if not _is_participante_evento(request.user, evento):
             return Response(
-                {"error": "Sem permissão para visualizar funcionários deste evento."},
+                {
+                    "error": "Sem permissão para visualizar funcionários deste evento."
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
-        queryset = EventoCerimonialFuncionario.objects.filter(evento=evento).select_related("usuario")
+        queryset = EventoCerimonialFuncionario.objects.filter(
+            evento=evento
+        ).select_related("usuario")
         serializer = EventoCerimonialFuncionarioSerializer(queryset, many=True)
         return Response(serializer.data)
 
     if not _pode_editar_evento(request.user, evento):
         return Response(
-            {"error": "Somente cerimonialistas podem editar funcionários do evento."},
+            {
+                "error": "Somente cerimonialistas podem editar funcionários do evento."
+            },
             status=status.HTTP_403_FORBIDDEN,
         )
 
@@ -331,7 +354,9 @@ def evento_cerimonial_funcionarios_view(request, pk):
 @permission_classes([IsAuthenticated])
 def evento_cerimonial_funcionario_detail_view(request, pk, funcionario_pk):
     try:
-        evento = EventoCerimonial.objects.prefetch_related("cerimonialistas", "funcionarios").get(pk=pk)
+        evento = EventoCerimonial.objects.prefetch_related(
+            "cerimonialistas", "funcionarios"
+        ).get(pk=pk)
     except EventoCerimonial.DoesNotExist:
         return Response(
             {"error": "Evento não encontrado."},
@@ -339,7 +364,9 @@ def evento_cerimonial_funcionario_detail_view(request, pk, funcionario_pk):
         )
 
     try:
-        funcionario = EventoCerimonialFuncionario.objects.get(pk=funcionario_pk, evento=evento)
+        funcionario = EventoCerimonialFuncionario.objects.get(
+            pk=funcionario_pk, evento=evento
+        )
     except EventoCerimonialFuncionario.DoesNotExist:
         return Response(
             {"error": "Funcionário do evento não encontrado."},
@@ -352,11 +379,15 @@ def evento_cerimonial_funcionario_detail_view(request, pk, funcionario_pk):
                 {"error": "Sem permissão para visualizar este funcionário."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        return Response(EventoCerimonialFuncionarioSerializer(funcionario).data)
+        return Response(
+            EventoCerimonialFuncionarioSerializer(funcionario).data
+        )
 
     if not _pode_editar_evento(request.user, evento):
         return Response(
-            {"error": "Somente cerimonialistas podem editar funcionários do evento."},
+            {
+                "error": "Somente cerimonialistas podem editar funcionários do evento."
+            },
             status=status.HTTP_403_FORBIDDEN,
         )
 
@@ -367,12 +398,19 @@ def evento_cerimonial_funcionario_detail_view(request, pk, funcionario_pk):
             partial=True,
         )
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                serializer.errors, status=status.HTTP_400_BAD_REQUEST
+            )
 
         usuario = serializer.validated_data.get("usuario")
-        if usuario and not usuario.groups.filter(name__iexact="Recepção").exists():
+        if (
+            usuario
+            and not usuario.groups.filter(name__iexact="Recepção").exists()
+        ):
             return Response(
-                {"error": "O usuário selecionado não pertence ao grupo Recepção."},
+                {
+                    "error": "O usuário selecionado não pertence ao grupo Recepção."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -380,7 +418,9 @@ def evento_cerimonial_funcionario_detail_view(request, pk, funcionario_pk):
         if usuario:
             evento.funcionarios.add(usuario)
 
-        return Response(EventoCerimonialFuncionarioSerializer(funcionario).data)
+        return Response(
+            EventoCerimonialFuncionarioSerializer(funcionario).data
+        )
 
     funcionario.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)

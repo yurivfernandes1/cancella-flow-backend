@@ -11,8 +11,12 @@ class ListaConvidadosCerimonial(models.Model):
         verbose_name="Evento",
     )
     titulo = models.CharField(max_length=255, verbose_name="Título")
-    descricao = models.TextField(blank=True, default="", verbose_name="Descrição")
-    data_evento = models.DateField(null=True, blank=True, verbose_name="Data do Evento")
+    descricao = models.TextField(
+        blank=True, default="", verbose_name="Descrição"
+    )
+    data_evento = models.DateField(
+        null=True, blank=True, verbose_name="Data do Evento"
+    )
     ativa = models.BooleanField(default=True, verbose_name="Ativa")
     created_on = models.DateTimeField(auto_now_add=True)
     updated_on = models.DateTimeField(auto_now=True)

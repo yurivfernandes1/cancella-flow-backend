@@ -34,9 +34,10 @@ from .evento_cerimonial_views import (
 def _pode_editar_lista(user, evento):
     if user.is_staff:
         return True
-    return evento.cerimonialistas.filter(id=user.id).exists() or evento.organizadores.filter(
-        id=user.id
-    ).exists()
+    return (
+        evento.cerimonialistas.filter(id=user.id).exists()
+        or evento.organizadores.filter(id=user.id).exists()
+    )
 
 
 def _pode_confirmar_entrada(user, evento):
@@ -96,7 +97,7 @@ def _enviar_qrcode_email_cerimonial(convidado, lista):
           </tr>
           <tr>
             <td style=\"padding:8px 12px;color:#6b7280;font-size:0.88rem;width:120px;\">Local</td>
-            <td style=\"padding:8px 12px;color:#111827;font-weight:500;\">{endereco or '-'}</td>
+            <td style=\"padding:8px 12px;color:#111827;font-weight:500;\">{endereco or "-"}</td>
           </tr>
         </table>
         <div style=\"background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px 20px;text-align:center;\">
@@ -142,7 +143,9 @@ def listas_convidados_cerimonial_view(request):
     user = request.user
 
     if request.method == "GET":
-        qs = ListaConvidadosCerimonial.objects.select_related("evento").prefetch_related(
+        qs = ListaConvidadosCerimonial.objects.select_related(
+            "evento"
+        ).prefetch_related(
             "convidados",
             "evento__cerimonialistas",
             "evento__organizadores",
@@ -173,7 +176,9 @@ def listas_convidados_cerimonial_view(request):
         )
         return Response(serializer.data)
 
-    if not (_is_cerimonialista(user) or _is_organizador(user) or user.is_staff):
+    if not (
+        _is_cerimonialista(user) or _is_organizador(user) or user.is_staff
+    ):
         return Response(
             {"error": "Sem permissão para criar lista de convidados."},
             status=status.HTTP_403_FORBIDDEN,
@@ -205,10 +210,17 @@ def listas_convidados_cerimonial_view(request):
     lista, created = ListaConvidadosCerimonial.objects.get_or_create(
         evento=evento,
         defaults={
-            "titulo": str(request.data.get("titulo") or f"Lista de Convidados - {evento.nome}"),
+            "titulo": str(
+                request.data.get("titulo")
+                or f"Lista de Convidados - {evento.nome}"
+            ),
             "descricao": str(request.data.get("descricao") or ""),
             "data_evento": request.data.get("data_evento")
-            or (evento.datetime_inicio.date() if evento.datetime_inicio else None),
+            or (
+                evento.datetime_inicio.date()
+                if evento.datetime_inicio
+                else None
+            ),
             "ativa": True,
         },
     )
@@ -224,12 +236,16 @@ def listas_convidados_cerimonial_view(request):
 @permission_classes([IsAuthenticated])
 def lista_convidados_cerimonial_detail_view(request, lista_pk):
     try:
-        lista = ListaConvidadosCerimonial.objects.select_related("evento").prefetch_related(
-            "convidados",
-            "evento__cerimonialistas",
-            "evento__organizadores",
-            "evento__funcionarios",
-        ).get(pk=lista_pk)
+        lista = (
+            ListaConvidadosCerimonial.objects.select_related("evento")
+            .prefetch_related(
+                "convidados",
+                "evento__cerimonialistas",
+                "evento__organizadores",
+                "evento__funcionarios",
+            )
+            .get(pk=lista_pk)
+        )
     except ListaConvidadosCerimonial.DoesNotExist:
         return Response(
             {"error": "Lista não encontrada."},
@@ -272,9 +288,13 @@ def lista_convidados_cerimonial_detail_view(request, lista_pk):
 @permission_classes([IsAuthenticated])
 def adicionar_convidado_cerimonial_view(request, lista_pk):
     try:
-        lista = ListaConvidadosCerimonial.objects.select_related("evento").prefetch_related(
-            "evento__cerimonialistas", "evento__organizadores"
-        ).get(pk=lista_pk)
+        lista = (
+            ListaConvidadosCerimonial.objects.select_related("evento")
+            .prefetch_related(
+                "evento__cerimonialistas", "evento__organizadores"
+            )
+            .get(pk=lista_pk)
+        )
     except ListaConvidadosCerimonial.DoesNotExist:
         return Response(
             {"error": "Lista não encontrada."},
@@ -304,7 +324,9 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if ConvidadoListaCerimonial.objects.filter(lista=lista, cpf=cpf_digits).exists():
+    if ConvidadoListaCerimonial.objects.filter(
+        lista=lista, cpf=cpf_digits
+    ).exists():
         return Response(
             {"error": "Este CPF já está na lista."},
             status=status.HTTP_409_CONFLICT,
@@ -328,9 +350,13 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
 @permission_classes([IsAuthenticated])
 def atualizar_convidado_cerimonial_view(request, lista_pk, convidado_pk):
     try:
-        lista = ListaConvidadosCerimonial.objects.select_related("evento").prefetch_related(
-            "evento__cerimonialistas", "evento__organizadores"
-        ).get(pk=lista_pk)
+        lista = (
+            ListaConvidadosCerimonial.objects.select_related("evento")
+            .prefetch_related(
+                "evento__cerimonialistas", "evento__organizadores"
+            )
+            .get(pk=lista_pk)
+        )
     except ListaConvidadosCerimonial.DoesNotExist:
         return Response(
             {"error": "Lista não encontrada."},
@@ -344,7 +370,9 @@ def atualizar_convidado_cerimonial_view(request, lista_pk, convidado_pk):
         )
 
     try:
-        convidado = ConvidadoListaCerimonial.objects.get(pk=convidado_pk, lista=lista)
+        convidado = ConvidadoListaCerimonial.objects.get(
+            pk=convidado_pk, lista=lista
+        )
     except ConvidadoListaCerimonial.DoesNotExist:
         return Response(
             {"error": "Convidado não encontrado."},
@@ -352,14 +380,18 @@ def atualizar_convidado_cerimonial_view(request, lista_pk, convidado_pk):
         )
 
     if "cpf" in request.data:
-        cpf_digits = "".join(c for c in str(request.data.get("cpf", "")) if c.isdigit())
+        cpf_digits = "".join(
+            c for c in str(request.data.get("cpf", "")) if c.isdigit()
+        )
         if len(cpf_digits) != 11:
             return Response(
                 {"error": "CPF deve ter 11 dígitos."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if (
-            ConvidadoListaCerimonial.objects.filter(lista=lista, cpf=cpf_digits)
+            ConvidadoListaCerimonial.objects.filter(
+                lista=lista, cpf=cpf_digits
+            )
             .exclude(pk=convidado.pk)
             .exists()
         ):
@@ -392,9 +424,13 @@ def atualizar_convidado_cerimonial_view(request, lista_pk, convidado_pk):
 @permission_classes([IsAuthenticated])
 def remover_convidado_cerimonial_view(request, lista_pk, convidado_pk):
     try:
-        lista = ListaConvidadosCerimonial.objects.select_related("evento").prefetch_related(
-            "evento__cerimonialistas", "evento__organizadores"
-        ).get(pk=lista_pk)
+        lista = (
+            ListaConvidadosCerimonial.objects.select_related("evento")
+            .prefetch_related(
+                "evento__cerimonialistas", "evento__organizadores"
+            )
+            .get(pk=lista_pk)
+        )
     except ListaConvidadosCerimonial.DoesNotExist:
         return Response(
             {"error": "Lista não encontrada."},
@@ -408,7 +444,9 @@ def remover_convidado_cerimonial_view(request, lista_pk, convidado_pk):
         )
 
     try:
-        convidado = ConvidadoListaCerimonial.objects.get(pk=convidado_pk, lista=lista)
+        convidado = ConvidadoListaCerimonial.objects.get(
+            pk=convidado_pk, lista=lista
+        )
     except ConvidadoListaCerimonial.DoesNotExist:
         return Response(
             {"error": "Convidado não encontrado."},
@@ -423,9 +461,13 @@ def remover_convidado_cerimonial_view(request, lista_pk, convidado_pk):
 @permission_classes([IsAuthenticated])
 def confirmar_entrada_cerimonial_view(request, lista_pk, convidado_pk):
     try:
-        lista = ListaConvidadosCerimonial.objects.select_related("evento").prefetch_related(
-            "evento__cerimonialistas", "evento__funcionarios"
-        ).get(pk=lista_pk)
+        lista = (
+            ListaConvidadosCerimonial.objects.select_related("evento")
+            .prefetch_related(
+                "evento__cerimonialistas", "evento__funcionarios"
+            )
+            .get(pk=lista_pk)
+        )
     except ListaConvidadosCerimonial.DoesNotExist:
         return Response(
             {"error": "Lista não encontrada."},
@@ -439,7 +481,9 @@ def confirmar_entrada_cerimonial_view(request, lista_pk, convidado_pk):
         )
 
     try:
-        convidado = ConvidadoListaCerimonial.objects.get(pk=convidado_pk, lista=lista)
+        convidado = ConvidadoListaCerimonial.objects.get(
+            pk=convidado_pk, lista=lista
+        )
     except ConvidadoListaCerimonial.DoesNotExist:
         return Response(
             {"error": "Convidado não encontrado."},
@@ -461,9 +505,13 @@ def confirmar_entrada_cerimonial_view(request, lista_pk, convidado_pk):
 @permission_classes([IsAuthenticated])
 def enviar_qrcode_cerimonial_view(request, lista_pk, convidado_pk):
     try:
-        lista = ListaConvidadosCerimonial.objects.select_related("evento").prefetch_related(
-            "evento__cerimonialistas", "evento__organizadores"
-        ).get(pk=lista_pk)
+        lista = (
+            ListaConvidadosCerimonial.objects.select_related("evento")
+            .prefetch_related(
+                "evento__cerimonialistas", "evento__organizadores"
+            )
+            .get(pk=lista_pk)
+        )
     except ListaConvidadosCerimonial.DoesNotExist:
         return Response(
             {"error": "Lista não encontrada."},
@@ -477,7 +525,9 @@ def enviar_qrcode_cerimonial_view(request, lista_pk, convidado_pk):
         )
 
     try:
-        convidado = ConvidadoListaCerimonial.objects.get(pk=convidado_pk, lista=lista)
+        convidado = ConvidadoListaCerimonial.objects.get(
+            pk=convidado_pk, lista=lista
+        )
     except ConvidadoListaCerimonial.DoesNotExist:
         return Response(
             {"error": "Convidado não encontrado."},
@@ -504,7 +554,9 @@ def enviar_qrcode_cerimonial_view(request, lista_pk, convidado_pk):
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
-    return Response({"success": True, "message": "QR Code enviado com sucesso."})
+    return Response(
+        {"success": True, "message": "QR Code enviado com sucesso."}
+    )
 
 
 @api_view(["GET"])
@@ -524,9 +576,16 @@ def buscar_cpf_simples_cerimonial_view(request):
         )
 
     cpf_fmt = f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}"
-    usuario = User.objects.filter(cpf=cpf_fmt).first() or User.objects.filter(cpf=cpf_digits).first()
+    usuario = (
+        User.objects.filter(cpf=cpf_fmt).first()
+        or User.objects.filter(cpf=cpf_digits).first()
+    )
     if usuario:
-        nome = getattr(usuario, "full_name", None) or usuario.get_full_name() or usuario.username
+        nome = (
+            getattr(usuario, "full_name", None)
+            or usuario.get_full_name()
+            or usuario.username
+        )
         return Response(
             {
                 "cpf": cpf_digits,
@@ -540,7 +599,9 @@ def buscar_cpf_simples_cerimonial_view(request):
     nome = None
     try:
         url = f"https://brasilapi.com.br/api/cpf/v1/{cpf_digits}"
-        req = urllib.request.Request(url, headers={"User-Agent": "CancellaFlow/1.0"})
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "CancellaFlow/1.0"}
+        )
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read().decode())
             nome = data.get("nome") or data.get("name")
@@ -564,7 +625,9 @@ def convidados_anteriores_cerimonial_view(request):
     user = request.user
     q = request.query_params.get("q", "").strip()
 
-    qs = ConvidadoListaCerimonial.objects.select_related("lista", "lista__evento")
+    qs = ConvidadoListaCerimonial.objects.select_related(
+        "lista", "lista__evento"
+    )
     if not user.is_staff:
         qs = qs.filter(
             Q(lista__evento__cerimonialistas=user)
@@ -583,7 +646,9 @@ def convidados_anteriores_cerimonial_view(request):
         .annotate(latest_id=Max("id"))
         .values_list("latest_id", flat=True)
     )
-    results = ConvidadoListaCerimonial.objects.filter(id__in=latest_ids).order_by("nome")[:30]
+    results = ConvidadoListaCerimonial.objects.filter(
+        id__in=latest_ids
+    ).order_by("nome")[:30]
 
     def _fmt(cpf):
         if len(cpf or "") == 11:
@@ -614,9 +679,9 @@ def confirmar_por_qrcode_cerimonial_view(request):
         )
 
     try:
-        convidado = ConvidadoListaCerimonial.objects.select_related("lista", "lista__evento").get(
-            qr_token=token
-        )
+        convidado = ConvidadoListaCerimonial.objects.select_related(
+            "lista", "lista__evento"
+        ).get(qr_token=token)
     except ConvidadoListaCerimonial.DoesNotExist:
         return Response(
             {"error": "QR code inválido."},
@@ -666,9 +731,9 @@ def download_qrcode_cerimonial_view(request):
         )
 
     try:
-        convidado = ConvidadoListaCerimonial.objects.select_related("lista", "lista__evento").get(
-            qr_token=token
-        )
+        convidado = ConvidadoListaCerimonial.objects.select_related(
+            "lista", "lista__evento"
+        ).get(qr_token=token)
     except ConvidadoListaCerimonial.DoesNotExist:
         return Response(
             {"error": "QR code não encontrado."},

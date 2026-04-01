@@ -38,9 +38,10 @@ def _is_participante_evento(user, evento):
 def _pode_editar_evento(user, evento):
     if user.is_staff:
         return True
-    return _is_cerimonialista(user) and evento.cerimonialistas.filter(
-        id=user.id
-    ).exists()
+    return (
+        _is_cerimonialista(user)
+        and evento.cerimonialistas.filter(id=user.id).exists()
+    )
 
 
 def _salvar_imagem_db(evento, request):
@@ -179,7 +180,9 @@ def evento_cerimonial_detail_view(request, pk):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    serializer = EventoCerimonialSerializer(evento, context={"request": request})
+    serializer = EventoCerimonialSerializer(
+        evento, context={"request": request}
+    )
     return Response(serializer.data)
 
 
@@ -187,9 +190,9 @@ def evento_cerimonial_detail_view(request, pk):
 @permission_classes([IsAuthenticated])
 def evento_cerimonial_update_view(request, pk):
     try:
-        evento = EventoCerimonial.objects.prefetch_related("cerimonialistas").get(
-            pk=pk
-        )
+        evento = EventoCerimonial.objects.prefetch_related(
+            "cerimonialistas"
+        ).get(pk=pk)
     except EventoCerimonial.DoesNotExist:
         return Response(
             {"error": "Evento do cerimonial não encontrado."},
@@ -223,9 +226,9 @@ def evento_cerimonial_update_view(request, pk):
 @permission_classes([IsAuthenticated])
 def evento_cerimonial_delete_view(request, pk):
     try:
-        evento = EventoCerimonial.objects.prefetch_related("cerimonialistas").get(
-            pk=pk
-        )
+        evento = EventoCerimonial.objects.prefetch_related(
+            "cerimonialistas"
+        ).get(pk=pk)
     except EventoCerimonial.DoesNotExist:
         return Response(
             {"error": "Evento do cerimonial não encontrado."},
@@ -269,7 +272,8 @@ def evento_cerimonial_imagem_db_view(request, pk):
 
     return HttpResponse(
         evento.imagem_db_data,
-        content_type=evento.imagem_db_content_type or "application/octet-stream",
+        content_type=evento.imagem_db_content_type
+        or "application/octet-stream",
     )
 
 

@@ -197,7 +197,9 @@ class EventoCerimonialFuncionario(models.Model):
 
     @property
     def documento_mascarado(self):
-        digits = "".join(ch for ch in str(self.documento or "") if ch.isdigit())
+        digits = "".join(
+            ch for ch in str(self.documento or "") if ch.isdigit()
+        )
         if len(digits) >= 6:
             return f"{digits[:3]}*****{digits[-3:]}"
         return self.documento
