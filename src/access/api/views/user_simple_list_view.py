@@ -18,6 +18,7 @@ class UserSimpleListView(generics.ListAPIView):
 
     serializer_class = UserMinimalSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         queryset = User.objects.all()

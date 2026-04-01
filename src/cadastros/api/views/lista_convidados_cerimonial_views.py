@@ -205,6 +205,29 @@ def _enviar_confirmacao_presenca_email_cerimonial(request, convidado, lista):
         RESPOSTA_PRESENCA_RECUSADO,
     )
 
+    evento_imagem_html = ""
+    attachments = []
+    if evento.imagem_db_data:
+        evento_img_b64 = base64.b64encode(evento.imagem_db_data).decode()
+        evento_img_filename = (
+            evento.imagem_db_filename
+            or f"evento-{evento.id}-imagem.jpg"
+        )
+        attachments.append(
+            {
+                "filename": evento_img_filename,
+                "content": evento_img_b64,
+                "content_id": "evento_imagem",
+                "disposition": "inline",
+            }
+        )
+        evento_imagem_html = """
+        <div style="margin:0 0 18px;">
+          <p style="color:#334155;font-size:0.88rem;font-weight:600;margin:0 0 8px;">Imagem do evento</p>
+          <img src="cid:evento_imagem" alt="Imagem do evento" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb;" />
+        </div>
+        """
+
     html_body = f"""
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
       <div style="background:#19294a;padding:20px 24px;text-align:center;">
@@ -216,6 +239,7 @@ def _enviar_confirmacao_presenca_email_cerimonial(request, convidado, lista):
           Você foi convidado(a) para o evento:<br/>
           <strong style="font-size:1.05rem;color:#2abb98;">{evento.nome}</strong>
         </p>
+                {evento_imagem_html}
         <table style="width:100%;border-collapse:collapse;margin:0 0 20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
           <tr>
             <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:120px;">Data</td>
@@ -244,6 +268,7 @@ def _enviar_confirmacao_presenca_email_cerimonial(request, convidado, lista):
                 "to": [convidado.email],
                 "subject": f"Confirme sua presença em {evento.nome}",
                 "html": html_body,
+                "attachments": attachments,
             }
         )
         return True
@@ -905,23 +930,38 @@ def resposta_presenca_public_cerimonial_view(request, token):
         )
 
     status_label = _resposta_presenca_label(convidado.resposta_presenca)
+    titulo_resposta = "Resposta registrada com sucesso"
+    resumo_resposta = "Obrigado por nos responder."
     mensagem_qr = ""
+    mensagem_agradecimento = ""
     if resposta == RESPOSTA_PRESENCA_CONFIRMADO:
+        titulo_resposta = "Presença confirmada"
+        resumo_resposta = "Obrigado pela confirmação de presença."
+        mensagem_agradecimento = (
+            "<p style='margin:0 0 14px;color:#0f172a;font-weight:600;'>"
+            "Sua confirmação foi recebida com sucesso. Agradecemos sua resposta."
+            "</p>"
+        )
         if qr_enviado:
             mensagem_qr = "<p style='color:#166534;'>Seu QR Code de acesso foi enviado para o seu e-mail.</p>"
         else:
             mensagem_qr = "<p style='color:#92400e;'>Não foi possível enviar o QR Code agora. Peça para o cerimonial reenviar pela lista de convidados.</p>"
+    elif resposta == RESPOSTA_PRESENCA_RECUSADO:
+        titulo_resposta = "Resposta registrada"
+        resumo_resposta = "Obrigado por avisar sobre sua disponibilidade."
 
     evento_nome = convidado.lista.evento.nome
     html = f"""
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:32px auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
       <div style="background:#19294a;padding:18px 22px;">
-        <p style="margin:0;color:#fff;font-size:1rem;font-weight:700;">Resposta registrada com sucesso</p>
+        <p style="margin:0;color:#fff;font-size:1rem;font-weight:700;">{titulo_resposta}</p>
       </div>
       <div style="padding:22px;background:#fff;">
         <h2 style="margin:0 0 8px;color:#0f172a;font-size:1.2rem;">{convidado.nome}</h2>
+        <p style="margin:0 0 12px;color:#334155;">{resumo_resposta}</p>
         <p style="margin:0 0 6px;color:#334155;">Evento: <strong>{evento_nome}</strong></p>
         <p style="margin:0 0 16px;color:#334155;">Status da sua presença: <strong>{status_label}</strong></p>
+        {mensagem_agradecimento}
         {mensagem_qr}
       </div>
     </div>
