@@ -310,6 +310,67 @@ urlpatterns = [
         views.evento_delete_view,
         name="evento-delete",
     ),
+    # URLs para Eventos do Cerimonial
+    path(
+        "eventos-cerimonial/",
+        views.evento_cerimonial_list_view,
+        name="evento-cerimonial-list",
+    ),
+    path(
+        "eventos-cerimonial/create/",
+        views.evento_cerimonial_create_view,
+        name="evento-cerimonial-create",
+    ),
+    path(
+        "eventos-cerimonial/<int:pk>/",
+        views.evento_cerimonial_detail_view,
+        name="evento-cerimonial-detail",
+    ),
+    path(
+        "eventos-cerimonial/<int:pk>/imagem-db/",
+        views.evento_cerimonial_imagem_db_view,
+        name="evento-cerimonial-imagem-db",
+    ),
+    path(
+        "eventos-cerimonial/<int:pk>/update/",
+        views.evento_cerimonial_update_view,
+        name="evento-cerimonial-update",
+    ),
+    path(
+        "eventos-cerimonial/<int:pk>/delete/",
+        views.evento_cerimonial_delete_view,
+        name="evento-cerimonial-delete",
+    ),
+    path(
+        "eventos-cerimonial/<int:pk>/convites/",
+        views.evento_cerimonial_convites_list_view,
+        name="evento-cerimonial-convites-list",
+    ),
+    path(
+        "eventos-cerimonial/<int:pk>/convites/<str:tipo>/gerar/",
+        views.evento_cerimonial_convite_generate_view,
+        name="evento-cerimonial-convite-gerar",
+    ),
+    path(
+        "eventos-cerimonial/convites/<uuid:token>/",
+        views.evento_cerimonial_convite_public_detail_view,
+        name="evento-cerimonial-convite-public-detail",
+    ),
+    path(
+        "eventos-cerimonial/convites/<uuid:token>/registrar/",
+        views.evento_cerimonial_convite_signup_view,
+        name="evento-cerimonial-convite-public-signup",
+    ),
+    path(
+        "eventos-cerimonial/<int:pk>/funcionarios/",
+        views.evento_cerimonial_funcionarios_view,
+        name="evento-cerimonial-funcionarios",
+    ),
+    path(
+        "eventos-cerimonial/<int:pk>/funcionarios/<int:funcionario_pk>/",
+        views.evento_cerimonial_funcionario_detail_view,
+        name="evento-cerimonial-funcionario-detail",
+    ),
     # URLs para Listas de Convidados
     path(
         "listas-convidados/confirmar-por-qrcode/",
@@ -365,5 +426,61 @@ urlpatterns = [
         "listas-convidados/buscar-cpf/",
         views.buscar_cpf_simples_view,
         name="lista-convidados-buscar-cpf-simples",
+    ),
+    # URLs para Listas de Convidados do Cerimonial
+    path(
+        "listas-convidados-cerimonial/",
+        views.listas_convidados_cerimonial_view,
+        name="listas-convidados-cerimonial",
+    ),
+    path(
+        "listas-convidados-cerimonial/download-qrcode/",
+        views.download_qrcode_cerimonial_view,
+        name="lista-convidados-cerimonial-download-qrcode",
+    ),
+    path(
+        "listas-convidados-cerimonial/confirmar-por-qrcode/",
+        views.confirmar_por_qrcode_cerimonial_view,
+        name="lista-convidados-cerimonial-confirmar-por-qrcode",
+    ),
+    path(
+        "listas-convidados-cerimonial/convidados-anteriores/",
+        views.convidados_anteriores_cerimonial_view,
+        name="lista-convidados-cerimonial-convidados-anteriores",
+    ),
+    path(
+        "listas-convidados-cerimonial/buscar-cpf/",
+        views.buscar_cpf_simples_cerimonial_view,
+        name="lista-convidados-cerimonial-buscar-cpf",
+    ),
+    path(
+        "listas-convidados-cerimonial/<int:lista_pk>/",
+        views.lista_convidados_cerimonial_detail_view,
+        name="lista-convidados-cerimonial-detail",
+    ),
+    path(
+        "listas-convidados-cerimonial/<int:lista_pk>/adicionar-convidado/",
+        views.adicionar_convidado_cerimonial_view,
+        name="lista-convidados-cerimonial-adicionar",
+    ),
+    path(
+        "listas-convidados-cerimonial/<int:lista_pk>/convidados/<int:convidado_pk>/update/",
+        views.atualizar_convidado_cerimonial_view,
+        name="lista-convidados-cerimonial-atualizar-convidado",
+    ),
+    path(
+        "listas-convidados-cerimonial/<int:lista_pk>/convidados/<int:convidado_pk>/delete/",
+        views.remover_convidado_cerimonial_view,
+        name="lista-convidados-cerimonial-remover-convidado",
+    ),
+    path(
+        "listas-convidados-cerimonial/<int:lista_pk>/convidados/<int:convidado_pk>/confirmar-entrada/",
+        views.confirmar_entrada_cerimonial_view,
+        name="lista-convidados-cerimonial-confirmar-entrada",
+    ),
+    path(
+        "listas-convidados-cerimonial/<int:lista_pk>/convidados/<int:convidado_pk>/enviar-qrcode/",
+        views.enviar_qrcode_cerimonial_view,
+        name="lista-convidados-cerimonial-enviar-qrcode",
     ),
 ]

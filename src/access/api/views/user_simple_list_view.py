@@ -44,6 +44,14 @@ class UserSimpleListView(generics.ListAPIView):
             for gf in group_filters:
                 query_q |= gf
             queryset = queryset.filter(query_q)
+        elif user_type in {"organizadores_evento", "organizadores"}:
+            queryset = queryset.filter(
+                groups__name__iexact="Organizador do Evento"
+            )
+        elif user_type in {"recepcao", "recepcoes"}:
+            queryset = queryset.filter(groups__name__iexact="Recepção")
+        elif user_type in {"cerimonialistas", "cerimonialista"}:
+            queryset = queryset.filter(groups__name__iexact="Cerimonialista")
 
         # Filtrar por condomínio (para não-staff)
         if not self.request.user.is_staff:

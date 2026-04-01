@@ -3,6 +3,15 @@ from django.contrib import admin
 from .models.aviso import Aviso
 from .models.condominio import Condominio
 from .models.encomenda import Encomenda
+from .models.evento_cerimonial import EventoCerimonial
+from .models.evento_cerimonial import (
+    EventoCerimonialConvite,
+    EventoCerimonialFuncionario,
+)
+from .models.lista_convidados_cerimonial import (
+    ConvidadoListaCerimonial,
+    ListaConvidadosCerimonial,
+)
 from .models.ocorrencia import Ocorrencia
 from .models.unidade import Unidade
 from .models.visitante import Visitante
@@ -109,3 +118,53 @@ class OcorrenciaAdmin(admin.ModelAdmin):
     list_filter = ("tipo", "status", "created_at")
     search_fields = ("titulo", "descricao", "criado_por__full_name")
     readonly_fields = ("created_at", "updated_at", "respondido_em")
+
+
+@admin.register(EventoCerimonial)
+class EventoCerimonialAdmin(admin.ModelAdmin):
+    list_display = (
+        "nome",
+        "datetime_inicio",
+        "datetime_fim",
+        "numero_pessoas",
+        "evento_confirmado",
+    )
+    list_filter = ("evento_confirmado", "datetime_inicio", "datetime_fim")
+    search_fields = ("nome", "cep", "numero", "complemento")
+    filter_horizontal = ("cerimonialistas", "organizadores", "funcionarios")
+
+
+@admin.register(ListaConvidadosCerimonial)
+class ListaConvidadosCerimonialAdmin(admin.ModelAdmin):
+    list_display = ("titulo", "evento", "data_evento", "ativa", "created_on")
+    list_filter = ("ativa", "data_evento")
+    search_fields = ("titulo", "evento__nome")
+
+
+@admin.register(ConvidadoListaCerimonial)
+class ConvidadoListaCerimonialAdmin(admin.ModelAdmin):
+    list_display = ("nome", "cpf", "vip", "lista", "entrada_confirmada", "created_on")
+    list_filter = ("vip", "entrada_confirmada", "created_on")
+    search_fields = ("nome", "cpf", "email", "lista__titulo", "lista__evento__nome")
+
+
+@admin.register(EventoCerimonialConvite)
+class EventoCerimonialConviteAdmin(admin.ModelAdmin):
+    list_display = ("evento", "tipo", "token", "ativo", "created_at")
+    list_filter = ("tipo", "ativo", "created_at")
+    search_fields = ("evento__nome", "token")
+
+
+@admin.register(EventoCerimonialFuncionario)
+class EventoCerimonialFuncionarioAdmin(admin.ModelAdmin):
+    list_display = (
+        "nome",
+        "evento",
+        "funcao",
+        "pagamento_realizado",
+        "valor_pagamento",
+        "horario_entrada",
+        "horario_saida",
+    )
+    list_filter = ("pagamento_realizado", "funcao", "created_at")
+    search_fields = ("nome", "documento", "evento__nome", "usuario__username")
