@@ -210,8 +210,7 @@ def _enviar_confirmacao_presenca_email_cerimonial(request, convidado, lista):
     if evento.imagem_db_data:
         evento_img_b64 = base64.b64encode(evento.imagem_db_data).decode()
         evento_img_filename = (
-            evento.imagem_db_filename
-            or f"evento-{evento.id}-imagem.jpg"
+            evento.imagem_db_filename or f"evento-{evento.id}-imagem.jpg"
         )
         attachments.append(
             {
