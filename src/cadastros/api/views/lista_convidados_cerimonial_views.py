@@ -525,6 +525,7 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
     nome = str(request.data.get("nome", "")).strip()
     email = str(request.data.get("email", "")).strip()
     vip = _to_bool(request.data.get("vip", False))
+    confirmado = _to_bool(request.data.get("confirmado", False))
     enviar_email = _to_bool(request.data.get("enviar_email", True))
 
     if cpf_digits and len(cpf_digits) != 11:
@@ -565,18 +566,44 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
             status=status.HTTP_409_CONFLICT,
         )
 
-    convidado = ConvidadoListaCerimonial.objects.create(
-        lista=lista,
-        cpf=cpf_digits or None,
-        nome=nome,
-        email=email,
-        vip=vip,
-        created_by=request.user,
-    )
+    create_data = {
+        "lista": lista,
+        "cpf": cpf_digits or None,
+        "nome": nome,
+        "email": email,
+        "vip": vip,
+        "created_by": request.user,
+    }
+    if confirmado:
+        create_data["resposta_presenca"] = RESPOSTA_PRESENCA_CONFIRMADO
+
+    convidado = ConvidadoListaCerimonial.objects.create(**create_data)
 
     if not enviar_email:
         response_data = ConvidadoListaCerimonialSerializer(convidado).data
         response_data["confirmacao_email_enviado"] = False
+        response_data["qrcode_email_enviado"] = False
+        return Response(
+            response_data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    if confirmado:
+        qrcode_email_enviado = _enviar_qrcode_email_cerimonial(
+            convidado, lista
+        )
+        if not qrcode_email_enviado:
+            convidado.delete()
+            return Response(
+                {
+                    "error": "Não foi possível enviar o QR Code. O convidado não foi adicionado."
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        response_data = ConvidadoListaCerimonialSerializer(convidado).data
+        response_data["confirmacao_email_enviado"] = False
+        response_data["qrcode_email_enviado"] = True
         return Response(
             response_data,
             status=status.HTTP_201_CREATED,
@@ -596,6 +623,7 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
 
     response_data = ConvidadoListaCerimonialSerializer(convidado).data
     response_data["confirmacao_email_enviado"] = True
+    response_data["qrcode_email_enviado"] = False
 
     return Response(
         response_data,
