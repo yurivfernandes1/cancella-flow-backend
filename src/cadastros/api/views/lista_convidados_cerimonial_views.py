@@ -527,7 +527,7 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
     vip = _to_bool(request.data.get("vip", False))
     enviar_email = _to_bool(request.data.get("enviar_email", True))
 
-    if len(cpf_digits) != 11:
+    if cpf_digits and len(cpf_digits) != 11:
         return Response(
             {"error": "CPF deve ter 11 dígitos."},
             status=status.HTTP_400_BAD_REQUEST,
@@ -554,9 +554,12 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if ConvidadoListaCerimonial.objects.filter(
-        lista=lista, cpf=cpf_digits
-    ).exists():
+    if (
+        cpf_digits
+        and ConvidadoListaCerimonial.objects.filter(
+            lista=lista, cpf=cpf_digits
+        ).exists()
+    ):
         return Response(
             {"error": "Este CPF já está na lista."},
             status=status.HTTP_409_CONFLICT,
@@ -564,7 +567,7 @@ def adicionar_convidado_cerimonial_view(request, lista_pk):
 
     convidado = ConvidadoListaCerimonial.objects.create(
         lista=lista,
-        cpf=cpf_digits,
+        cpf=cpf_digits or None,
         nome=nome,
         email=email,
         vip=vip,
@@ -723,12 +726,12 @@ def atualizar_convidado_cerimonial_view(request, lista_pk, convidado_pk):
         cpf_digits = "".join(
             c for c in str(request.data.get("cpf", "")) if c.isdigit()
         )
-        if len(cpf_digits) != 11:
+        if cpf_digits and len(cpf_digits) != 11:
             return Response(
                 {"error": "CPF deve ter 11 dígitos."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if (
+        if cpf_digits and (
             ConvidadoListaCerimonial.objects.filter(
                 lista=lista, cpf=cpf_digits
             )
@@ -739,7 +742,7 @@ def atualizar_convidado_cerimonial_view(request, lista_pk, convidado_pk):
                 {"error": "Este CPF já está na lista."},
                 status=status.HTTP_409_CONFLICT,
             )
-        convidado.cpf = cpf_digits
+        convidado.cpf = cpf_digits or None
 
     if "nome" in request.data:
         nome = str(request.data.get("nome", "")).strip()
@@ -1009,12 +1012,16 @@ def convidados_anteriores_cerimonial_view(request):
             qs = qs.filter(nome__icontains=q)
 
     latest_ids = (
-        qs.values("cpf")
+        qs.exclude(Q(cpf__isnull=True) | Q(cpf=""))
+        .values("cpf")
         .annotate(latest_id=Max("id"))
         .values_list("latest_id", flat=True)
     )
+    sem_cpf_ids = qs.filter(Q(cpf__isnull=True) | Q(cpf="")).values_list(
+        "id", flat=True
+    )
     results = ConvidadoListaCerimonial.objects.filter(
-        id__in=latest_ids
+        Q(id__in=latest_ids) | Q(id__in=sem_cpf_ids)
     ).order_by("nome")[:30]
 
     def _fmt(cpf):

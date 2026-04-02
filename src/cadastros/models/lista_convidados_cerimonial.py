@@ -47,7 +47,12 @@ class ConvidadoListaCerimonial(models.Model):
         related_name="convidados",
         verbose_name="Lista",
     )
-    cpf = models.CharField(max_length=11, verbose_name="CPF")
+    cpf = models.CharField(
+        max_length=11,
+        blank=True,
+        null=True,
+        verbose_name="CPF",
+    )
     nome = models.CharField(max_length=255, verbose_name="Nome")
     email = models.EmailField(blank=True, default="", verbose_name="E-mail")
     vip = models.BooleanField(default=False, verbose_name="VIP")
@@ -82,8 +87,14 @@ class ConvidadoListaCerimonial(models.Model):
     class Meta:
         verbose_name = "Convidado da Lista (Cerimonial)"
         verbose_name_plural = "Convidados da Lista (Cerimonial)"
-        unique_together = [["lista", "cpf"]]
         ordering = ["-vip", "nome", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["lista", "cpf"],
+                condition=models.Q(cpf__isnull=False) & ~models.Q(cpf=""),
+                name="cad_cer_lista_cpf_unique_if_present",
+            )
+        ]
 
     def __str__(self):
-        return f"{self.nome} ({self.cpf})"
+        return f"{self.nome} ({self.cpf or 'sem CPF'})"
