@@ -1,4 +1,5 @@
 import re
+from html import escape
 from urllib.parse import urlparse
 
 from app.utils.validators import format_cpf
@@ -70,6 +71,7 @@ def _enviar_email_aprovacao_morador(request, user, senha_temporaria):
     condominio = getattr(user, "condominio", None)
     condominio_nome = getattr(condominio, "nome", None) or "Condomínio"
     login_url = _build_login_url(request)
+    safe_condominio_nome = escape(str(condominio_nome or ""))
 
     logo_html = ""
     logo_bytes = None
@@ -84,7 +86,7 @@ def _enviar_email_aprovacao_morador(request, user, senha_temporaria):
             img.save(out_buffer, format="PNG")
             logo_bytes = out_buffer.getvalue()
             logo_html = (
-                f'<img src="cid:logo" alt="{condominio_nome}" '
+                f'<img src="cid:logo" alt="{safe_condominio_nome}" '
                 'style="max-width:220px;max-height:80px;margin-top:8px;" />'
             )
     except Exception:
@@ -92,14 +94,18 @@ def _enviar_email_aprovacao_morador(request, user, senha_temporaria):
         logo_bytes = None
 
     nome = user.full_name or user.username
+    safe_nome = escape(str(nome or ""))
+    safe_login_url = escape(str(login_url or ""), quote=True)
+    safe_username = escape(str(user.username or ""))
+    safe_senha_temporaria = escape(str(senha_temporaria or ""))
     html_body = f"""
 <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
   <div style="background:#19294a;padding:20px 24px;text-align:center;">
-    <p style="color:#ffffff;margin:0;font-size:1rem;font-weight:600;">{condominio_nome}</p>
+        <p style="color:#ffffff;margin:0;font-size:1rem;font-weight:600;">{safe_condominio_nome}</p>
     {logo_html}
   </div>
   <div style="padding:24px;background:#ffffff;">
-    <h2 style="color:#19294a;margin:0 0 12px;font-size:1.1rem;">Olá, {nome}!</h2>
+        <h2 style="color:#19294a;margin:0 0 12px;font-size:1.1rem;">Olá, {safe_nome}!</h2>
     <p style="color:#374151;line-height:1.6;margin:0 0 16px;">
       Seu cadastro foi <strong style="color:#15803d;">aprovado</strong>.
       Use os dados abaixo para seu primeiro acesso:
@@ -107,15 +113,15 @@ def _enviar_email_aprovacao_morador(request, user, senha_temporaria):
     <table style="width:100%;border-collapse:collapse;margin:0 0 20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
       <tr>
         <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Link de acesso</td>
-        <td style="padding:8px 12px;color:#111827;font-weight:500;"><a href="{login_url}" style="color:#2563eb;text-decoration:none;">{login_url}</a></td>
+                <td style="padding:8px 12px;color:#111827;font-weight:500;"><a href="{safe_login_url}" style="color:#2563eb;text-decoration:none;">{safe_login_url}</a></td>
       </tr>
       <tr>
         <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Usuário</td>
-        <td style="padding:8px 12px;color:#111827;font-weight:600;">{user.username}</td>
+                <td style="padding:8px 12px;color:#111827;font-weight:600;">{safe_username}</td>
       </tr>
       <tr>
         <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Senha temporária</td>
-        <td style="padding:8px 12px;color:#111827;font-weight:600;">{senha_temporaria}</td>
+                <td style="padding:8px 12px;color:#111827;font-weight:600;">{safe_senha_temporaria}</td>
       </tr>
     </table>
     <p style="color:#92400e;font-size:0.86rem;margin:0;">
@@ -165,6 +171,7 @@ def _enviar_email_reset_senha(request, user, nova_senha):
     condominio = getattr(user, "condominio", None)
     condominio_nome = getattr(condominio, "nome", None) or "Condomínio"
     login_url = _build_login_url(request)
+    safe_condominio_nome = escape(str(condominio_nome or ""))
 
     logo_html = ""
     logo_bytes = None
@@ -179,7 +186,7 @@ def _enviar_email_reset_senha(request, user, nova_senha):
             img.save(out_buffer, format="PNG")
             logo_bytes = out_buffer.getvalue()
             logo_html = (
-                f'<img src="cid:logo" alt="{condominio_nome}" '
+                f'<img src="cid:logo" alt="{safe_condominio_nome}" '
                 'style="max-width:220px;max-height:80px;margin-top:8px;" />'
             )
     except Exception:
@@ -187,29 +194,33 @@ def _enviar_email_reset_senha(request, user, nova_senha):
         logo_bytes = None
 
     nome = user.full_name or user.username
+    safe_nome = escape(str(nome or ""))
+    safe_login_url = escape(str(login_url or ""), quote=True)
+    safe_username = escape(str(user.username or ""))
+    safe_nova_senha = escape(str(nova_senha or ""))
     html_body = f"""
 <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
     <div style="background:#19294a;padding:20px 24px;text-align:center;">
-        <p style="color:#ffffff;margin:0;font-size:1rem;font-weight:600;">{condominio_nome}</p>
+        <p style="color:#ffffff;margin:0;font-size:1rem;font-weight:600;">{safe_condominio_nome}</p>
         {logo_html}
     </div>
     <div style="padding:24px;background:#ffffff;">
-        <h2 style="color:#19294a;margin:0 0 12px;font-size:1.1rem;">Olá, {nome}!</h2>
+        <h2 style="color:#19294a;margin:0 0 12px;font-size:1.1rem;">Olá, {safe_nome}!</h2>
         <p style="color:#374151;line-height:1.6;margin:0 0 16px;">
             Sua senha foi alterada por um administrador. Use os dados abaixo para acessar:
         </p>
         <table style="width:100%;border-collapse:collapse;margin:0 0 20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
             <tr>
                 <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Link de acesso</td>
-                <td style="padding:8px 12px;color:#111827;font-weight:500;"><a href="{login_url}" style="color:#2563eb;text-decoration:none;">{login_url}</a></td>
+                <td style="padding:8px 12px;color:#111827;font-weight:500;"><a href="{safe_login_url}" style="color:#2563eb;text-decoration:none;">{safe_login_url}</a></td>
             </tr>
             <tr>
                 <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Usuário</td>
-                <td style="padding:8px 12px;color:#111827;font-weight:600;">{user.username}</td>
+                <td style="padding:8px 12px;color:#111827;font-weight:600;">{safe_username}</td>
             </tr>
             <tr>
                 <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Senha</td>
-                <td style="padding:8px 12px;color:#111827;font-weight:600;">{nova_senha}</td>
+                <td style="padding:8px 12px;color:#111827;font-weight:600;">{safe_nova_senha}</td>
             </tr>
         </table>
         <p style="color:#92400e;font-size:0.86rem;margin:0;">

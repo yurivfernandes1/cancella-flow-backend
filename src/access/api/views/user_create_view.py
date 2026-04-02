@@ -1,3 +1,4 @@
+from html import escape
 from urllib.parse import urlparse
 
 from cadastros.models import Condominio, Unidade
@@ -48,6 +49,11 @@ def _enviar_email_novo_usuario_com_acesso(
 
     login_url = _build_login_url(request)
     nome = user.full_name or user.username
+    safe_nome = escape(str(nome or ""))
+    safe_perfil_label = escape(str(perfil_label or ""))
+    safe_login_url = escape(str(login_url or ""), quote=True)
+    safe_username = escape(str(user.username or ""))
+    safe_senha_temporaria = escape(str(senha_temporaria or ""))
 
     html_body = f"""
 <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
@@ -55,23 +61,23 @@ def _enviar_email_novo_usuario_com_acesso(
         <p style="color:#ffffff;margin:0;font-size:1rem;font-weight:600;">Cancella Flow</p>
     </div>
     <div style="padding:24px;background:#ffffff;">
-        <h2 style="color:#19294a;margin:0 0 12px;font-size:1.1rem;">Olá, {nome}!</h2>
+        <h2 style="color:#19294a;margin:0 0 12px;font-size:1.1rem;">Olá, {safe_nome}!</h2>
         <p style="color:#374151;line-height:1.6;margin:0 0 16px;">
-            Seu cadastro de <strong>{perfil_label}</strong> foi criado com sucesso.
+            Seu cadastro de <strong>{safe_perfil_label}</strong> foi criado com sucesso.
             Use os dados abaixo para seu primeiro acesso:
         </p>
         <table style="width:100%;border-collapse:collapse;margin:0 0 20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
             <tr>
                 <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Link de acesso</td>
-                <td style="padding:8px 12px;color:#111827;font-weight:500;"><a href="{login_url}" style="color:#2563eb;text-decoration:none;">{login_url}</a></td>
+                <td style="padding:8px 12px;color:#111827;font-weight:500;"><a href="{safe_login_url}" style="color:#2563eb;text-decoration:none;">{safe_login_url}</a></td>
             </tr>
             <tr>
                 <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Usuário</td>
-                <td style="padding:8px 12px;color:#111827;font-weight:600;">{user.username}</td>
+                <td style="padding:8px 12px;color:#111827;font-weight:600;">{safe_username}</td>
             </tr>
             <tr>
                 <td style="padding:8px 12px;color:#6b7280;font-size:0.88rem;width:140px;">Senha temporária</td>
-                <td style="padding:8px 12px;color:#111827;font-weight:600;">{senha_temporaria}</td>
+                <td style="padding:8px 12px;color:#111827;font-weight:600;">{safe_senha_temporaria}</td>
             </tr>
         </table>
         <p style="color:#92400e;font-size:0.86rem;margin:0;">
