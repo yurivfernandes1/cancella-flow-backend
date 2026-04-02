@@ -267,11 +267,31 @@ def _criar_usuario_funcionario(
         raise ValidationError("Documento do funcionário é obrigatório.")
 
     documento_digits = _normalize_cpf(documento)
+    if documento_digits:
+        validate_cpf(documento_digits)
+
+    grupos_ignorados = [
+        "síndicos",
+        "sindicos",
+        "moradores",
+        "portaria",
+        "cerimonialista",
+        "organizador do evento",
+        "admin",
+    ]
+    filtro_grupos_ignorados = Q()
+    for nome_grupo in grupos_ignorados:
+        filtro_grupos_ignorados |= Q(groups__name__iexact=nome_grupo)
+
+    usuarios_restritos = User.objects.filter(filtro_grupos_ignorados)
+
     if (
         documento_digits
         and User.objects.filter(
             Q(cpf=documento_digits) | Q(cpf__endswith=documento_digits)
-        ).exists()
+        )
+        .exclude(id__in=usuarios_restritos.values_list("id", flat=True))
+        .exists()
     ):
         raise ValidationError(
             "Já existe funcionário com este documento. Selecione na lista de cadastrados."

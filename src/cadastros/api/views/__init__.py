@@ -113,6 +113,13 @@ from .ocorrencia_views import (
     ocorrencia_list_view,
     ocorrencia_update_view,
 )
+from .recepcao_evento_views import (
+    recepcao_evento_checkin_view,
+    recepcao_evento_checkout_view,
+    recepcao_evento_confirmar_por_nome_view,
+    recepcao_evento_convidados_view,
+    recepcao_eventos_painel_view,
+)
 from .unidade_views import (
     export_modelo_excel_view,
     import_excel_view,
@@ -241,4 +248,9 @@ __all__ = [
     "confirmar_por_qrcode_cerimonial_view",
     "download_qrcode_cerimonial_view",
     "resposta_presenca_public_cerimonial_view",
+    "recepcao_eventos_painel_view",
+    "recepcao_evento_checkin_view",
+    "recepcao_evento_checkout_view",
+    "recepcao_evento_convidados_view",
+    "recepcao_evento_confirmar_por_nome_view",
 ]

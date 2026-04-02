@@ -19,6 +19,7 @@ from ...models import (
     RESPOSTA_PRESENCA_RECUSADO,
     ConvidadoListaCerimonial,
     EventoCerimonial,
+    EventoCerimonialFuncionario,
     ListaConvidadosCerimonial,
 )
 from ..serializers.lista_convidados_cerimonial_serializer import (
@@ -48,6 +49,63 @@ def _pode_confirmar_entrada(user, evento):
     if _is_recepcao(user) and evento.funcionarios.filter(id=user.id).exists():
         return True
     return evento.cerimonialistas.filter(id=user.id).exists()
+
+
+def _evento_em_andamento(evento, referencia=None):
+    if not evento.datetime_inicio or not evento.datetime_fim:
+        return False
+    referencia = referencia or timezone.localtime()
+    inicio_local = timezone.localtime(evento.datetime_inicio)
+    fim_local = timezone.localtime(evento.datetime_fim)
+    return inicio_local <= referencia <= fim_local
+
+
+def _validar_operacao_recepcao(user, evento, requer_horario=False):
+    # Cerimonialistas e administradores mantêm a permissão operacional antiga.
+    if user.is_staff or _is_cerimonialista(user):
+        return None
+
+    if not _is_recepcao(user):
+        return None
+
+    vinculo_ativo = (
+        EventoCerimonialFuncionario.objects.select_related("evento")
+        .filter(
+            usuario=user,
+            horario_entrada__isnull=False,
+            horario_saida__isnull=True,
+        )
+        .order_by("-horario_entrada", "-id")
+        .first()
+    )
+
+    if not vinculo_ativo:
+        return Response(
+            {
+                "error": "Faça check-in no evento para iniciar a leitura e validação de convidados."
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if vinculo_ativo.evento_id != evento.id:
+        return Response(
+            {
+                "error": "Você possui check-in ativo em outro evento.",
+                "evento_ativo": vinculo_ativo.evento.nome,
+                "evento_ativo_id": vinculo_ativo.evento_id,
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    if requer_horario and not _evento_em_andamento(evento):
+        return Response(
+            {
+                "error": "A leitura de convidados só é permitida na data e horário do evento."
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    return None
 
 
 def _resposta_presenca_label(value):
@@ -762,6 +820,14 @@ def confirmar_entrada_cerimonial_view(request, lista_pk, convidado_pk):
             status=status.HTTP_403_FORBIDDEN,
         )
 
+    erro_recepcao = _validar_operacao_recepcao(
+        request.user,
+        lista.evento,
+        requer_horario=True,
+    )
+    if erro_recepcao:
+        return erro_recepcao
+
     try:
         convidado = ConvidadoListaCerimonial.objects.get(
             pk=convidado_pk, lista=lista
@@ -773,6 +839,15 @@ def confirmar_entrada_cerimonial_view(request, lista_pk, convidado_pk):
         )
 
     if convidado.entrada_confirmada:
+        if _is_recepcao(request.user) and not (
+            request.user.is_staff or _is_cerimonialista(request.user)
+        ):
+            return Response(
+                {
+                    "error": "Somente o cerimonial pode cancelar entrada confirmada por engano da recepção."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
         convidado.entrada_confirmada = False
         convidado.entrada_em = None
     else:
@@ -985,6 +1060,14 @@ def confirmar_por_qrcode_cerimonial_view(request):
             {"error": "Sem permissão para validar este QR code."},
             status=status.HTTP_403_FORBIDDEN,
         )
+
+    erro_recepcao = _validar_operacao_recepcao(
+        request.user,
+        convidado.lista.evento,
+        requer_horario=True,
+    )
+    if erro_recepcao:
+        return erro_recepcao
 
     if convidado.entrada_confirmada:
         return Response(

@@ -386,6 +386,31 @@ urlpatterns = [
         views.funcao_festa_detail_view,
         name="evento-cerimonial-funcoes-detail",
     ),
+    path(
+        "eventos-cerimonial/recepcao/painel/",
+        views.recepcao_eventos_painel_view,
+        name="evento-cerimonial-recepcao-painel",
+    ),
+    path(
+        "eventos-cerimonial/<int:pk>/recepcao/checkin/",
+        views.recepcao_evento_checkin_view,
+        name="evento-cerimonial-recepcao-checkin",
+    ),
+    path(
+        "eventos-cerimonial/<int:pk>/recepcao/checkout/",
+        views.recepcao_evento_checkout_view,
+        name="evento-cerimonial-recepcao-checkout",
+    ),
+    path(
+        "eventos-cerimonial/<int:pk>/recepcao/convidados/",
+        views.recepcao_evento_convidados_view,
+        name="evento-cerimonial-recepcao-convidados",
+    ),
+    path(
+        "eventos-cerimonial/<int:pk>/recepcao/confirmar-por-nome/",
+        views.recepcao_evento_confirmar_por_nome_view,
+        name="evento-cerimonial-recepcao-confirmar-por-nome",
+    ),
     # URLs para Listas de Convidados
     path(
         "listas-convidados/confirmar-por-qrcode/",

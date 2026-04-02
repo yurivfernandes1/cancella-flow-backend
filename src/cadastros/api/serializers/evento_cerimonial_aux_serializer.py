@@ -1,3 +1,5 @@
+from app.utils.validators import validate_cpf
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from ...models import (
@@ -79,10 +81,37 @@ class EventoCerimonialFuncionarioSerializer(serializers.ModelSerializer):
             return None
         return bool(obj.usuario.is_active)
 
+    def _normalize_cpf(self, value):
+        return "".join(ch for ch in str(value or "") if ch.isdigit())
+
     def validate(self, attrs):
+        documento = attrs.get("documento")
+        if documento is not None:
+            cpf_digits = self._normalize_cpf(documento)
+            if len(cpf_digits) != 11:
+                raise serializers.ValidationError(
+                    {"documento": "Informe um CPF válido com 11 dígitos."}
+                )
+
+            try:
+                validate_cpf(cpf_digits)
+            except DjangoValidationError:
+                raise serializers.ValidationError(
+                    {"documento": "CPF inválido."}
+                )
+
+            attrs["documento"] = cpf_digits
+
         funcoes_ids = attrs.pop("funcoes_ids", None)
         if funcoes_ids is not None:
             ids_ordenados = list(dict.fromkeys(funcoes_ids))
+            if len(ids_ordenados) > 1:
+                raise serializers.ValidationError(
+                    {
+                        "funcoes_ids": "Selecione apenas uma função por funcionário no evento."
+                    }
+                )
+
             queryset = FuncaoFesta.objects.filter(id__in=ids_ordenados)
 
             request = self.context.get("request")
@@ -102,6 +131,23 @@ class EventoCerimonialFuncionarioSerializer(serializers.ModelSerializer):
                 )
 
             attrs["_funcoes_objs"] = funcoes
+
+        evento = attrs.get("evento") or getattr(self.instance, "evento", None)
+        cpf_documento = attrs.get("documento")
+        if evento and cpf_documento:
+            existentes = EventoCerimonialFuncionario.objects.filter(
+                evento=evento
+            )
+            if self.instance and self.instance.pk:
+                existentes = existentes.exclude(pk=self.instance.pk)
+
+            for existente in existentes.only("id", "documento"):
+                if self._normalize_cpf(existente.documento) == cpf_documento:
+                    raise serializers.ValidationError(
+                        {
+                            "documento": "Já existe funcionário com este CPF neste evento."
+                        }
+                    )
 
         return attrs
 
