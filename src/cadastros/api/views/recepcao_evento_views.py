@@ -363,9 +363,7 @@ def recepcao_eventos_painel_view(request):
     user = request.user
     if not (_is_recepcao(user) or _is_cerimonialista(user) or user.is_staff):
         return Response(
-            {
-                "error": "Acesso permitido apenas para recepção ou cerimonial."
-            },
+            {"error": "Acesso permitido apenas para recepção ou cerimonial."},
             status=status.HTTP_403_FORBIDDEN,
         )
 
@@ -451,12 +449,18 @@ def recepcao_eventos_painel_view(request):
                     and not checkin_realizado
                     and (evento_ativo_id in (None, evento_id))
                 ),
-                "can_checkout": False if is_cerimonial_operador else checkin_ativo,
+                "can_checkout": False
+                if is_cerimonial_operador
+                else checkin_ativo,
                 "can_read_qr": (
-                    is_hoje if is_cerimonial_operador else checkin_ativo and is_em_andamento
+                    is_hoje
+                    if is_cerimonial_operador
+                    else checkin_ativo and is_em_andamento
                 ),
                 "can_consultar_lista": (
-                    is_hoje if is_cerimonial_operador else checkin_ativo and is_em_andamento
+                    is_hoje
+                    if is_cerimonial_operador
+                    else checkin_ativo and is_em_andamento
                 ),
                 "checkin_realizado": checkin_realizado,
                 "checkout_realizado": checkout_realizado,
@@ -478,7 +482,9 @@ def recepcao_eventos_painel_view(request):
             "can_read_qr_global": (
                 any(bool(item.get("can_read_qr")) for item in eventos_data)
                 if _is_cerimonialista(user) and not user.is_staff
-                else bool(ativo and _evento_em_andamento(ativo.evento, referencia))
+                else bool(
+                    ativo and _evento_em_andamento(ativo.evento, referencia)
+                )
             ),
         }
     )
