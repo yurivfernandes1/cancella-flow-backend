@@ -1,4 +1,5 @@
 from django.db import IntegrityError
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -13,7 +14,7 @@ from ...models import (
 from ..serializers.evento_cerimonial_serializer import (
     EventoCerimonialListSerializer,
 )
-from .evento_cerimonial_views import _is_recepcao
+from .evento_cerimonial_views import _is_cerimonialista, _is_recepcao
 
 
 def _agora_local():
@@ -273,6 +274,28 @@ def _garantir_vinculo_recepcao(user, evento):
 
 
 def _validar_operacao_evento_recepcao(user, evento, requer_horario=False):
+    referencia = _agora_local()
+
+    # Cerimonial pode operar leitura/validação sem check-in, mas apenas no dia do evento.
+    if (
+        _is_cerimonialista(user)
+        and not user.is_staff
+        and evento.cerimonialistas.filter(id=user.id).exists()
+    ):
+        if not _evento_no_mesmo_dia(evento, referencia):
+            return (
+                Response(
+                    {
+                        "error": "Esta operação só é permitida no dia do evento."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                ),
+                None,
+                None,
+            )
+
+        return None, None, referencia
+
     if not _pode_operar_evento_recepcao(user, evento):
         return (
             Response(
@@ -288,8 +311,6 @@ def _validar_operacao_evento_recepcao(user, evento, requer_horario=False):
     vinculo = _garantir_vinculo_recepcao(user, evento)
     if vinculo is None and not user.is_staff:
         return _erro_sem_vinculo_recepcao(), None, None
-
-    referencia = _agora_local()
 
     if user.is_staff:
         return None, vinculo, referencia
@@ -340,19 +361,30 @@ def _validar_operacao_evento_recepcao(user, evento, requer_horario=False):
 @permission_classes([IsAuthenticated])
 def recepcao_eventos_painel_view(request):
     user = request.user
-    if not (_is_recepcao(user) or user.is_staff):
+    if not (_is_recepcao(user) or _is_cerimonialista(user) or user.is_staff):
         return Response(
-            {"error": "Acesso permitido apenas para recepção."},
+            {
+                "error": "Acesso permitido apenas para recepção ou cerimonial."
+            },
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    eventos = list(
-        EventoCerimonial.objects.select_related("lista_convidados")
-        .prefetch_related("cerimonialistas", "funcionarios")
-        .filter(funcionarios=user)
-        .distinct()
-        .order_by("datetime_inicio")
-    )
+    eventos_qs = EventoCerimonial.objects.select_related(
+        "lista_convidados"
+    ).prefetch_related("cerimonialistas", "funcionarios")
+
+    if user.is_staff:
+        eventos_qs = eventos_qs.all()
+    elif _is_recepcao(user) and _is_cerimonialista(user):
+        eventos_qs = eventos_qs.filter(
+            Q(funcionarios=user) | Q(cerimonialistas=user)
+        )
+    elif _is_cerimonialista(user):
+        eventos_qs = eventos_qs.filter(cerimonialistas=user)
+    else:
+        eventos_qs = eventos_qs.filter(funcionarios=user)
+
+    eventos = list(eventos_qs.distinct().order_by("datetime_inicio"))
 
     referencia = _agora_local()
     vinculos = (
@@ -393,6 +425,11 @@ def recepcao_eventos_painel_view(request):
             and not checkout_realizado
             and evento_ativo_id == evento_id
         )
+        is_cerimonial_operador = (
+            not user.is_staff
+            and _is_cerimonialista(user)
+            and evento.cerimonialistas.filter(id=user.id).exists()
+        )
 
         is_hoje = _evento_no_mesmo_dia(evento, referencia)
         is_em_andamento = _evento_em_andamento(evento, referencia)
@@ -407,12 +444,20 @@ def recepcao_eventos_painel_view(request):
                 **item,
                 "is_hoje": is_hoje,
                 "is_em_andamento": is_em_andamento,
-                "can_checkin_today": is_hoje
-                and not checkin_realizado
-                and (evento_ativo_id in (None, evento_id)),
-                "can_checkout": checkin_ativo,
-                "can_read_qr": checkin_ativo and is_em_andamento,
-                "can_consultar_lista": checkin_ativo and is_em_andamento,
+                "can_checkin_today": (
+                    False
+                    if is_cerimonial_operador
+                    else is_hoje
+                    and not checkin_realizado
+                    and (evento_ativo_id in (None, evento_id))
+                ),
+                "can_checkout": False if is_cerimonial_operador else checkin_ativo,
+                "can_read_qr": (
+                    is_hoje if is_cerimonial_operador else checkin_ativo and is_em_andamento
+                ),
+                "can_consultar_lista": (
+                    is_hoje if is_cerimonial_operador else checkin_ativo and is_em_andamento
+                ),
                 "checkin_realizado": checkin_realizado,
                 "checkout_realizado": checkout_realizado,
                 "horario_entrada": (
@@ -430,8 +475,10 @@ def recepcao_eventos_painel_view(request):
             "evento_ativo_id": evento_ativo_id,
             "tem_evento_hoje": evento_hoje_id is not None,
             "evento_hoje_id": evento_hoje_id,
-            "can_read_qr_global": bool(
-                ativo and _evento_em_andamento(ativo.evento, referencia)
+            "can_read_qr_global": (
+                any(bool(item.get("can_read_qr")) for item in eventos_data)
+                if _is_cerimonialista(user) and not user.is_staff
+                else bool(ativo and _evento_em_andamento(ativo.evento, referencia))
             ),
         }
     )
@@ -734,10 +781,84 @@ def recepcao_evento_confirmar_por_nome_view(request, pk):
     )
 
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def recepcao_evento_confirmar_convidado_view(request, pk):
+    try:
+        evento = EventoCerimonial.objects.select_related("lista_convidados")
+        evento = evento.prefetch_related("funcionarios").get(pk=pk)
+    except EventoCerimonial.DoesNotExist:
+        return Response(
+            {"error": "Evento não encontrado."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    erro, _, referencia = _validar_operacao_evento_recepcao(
+        request.user,
+        evento,
+        requer_horario=True,
+    )
+    if erro:
+        return erro
+
+    convidado_id_raw = request.data.get("convidado_id")
+    try:
+        convidado_id = int(convidado_id_raw)
+    except (TypeError, ValueError):
+        return Response(
+            {"error": "Informe um convidado válido para confirmar a entrada."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    lista = getattr(evento, "lista_convidados", None)
+    if not lista:
+        return Response(
+            {"error": "Lista de convidados não encontrada para este evento."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    convidado = ConvidadoListaCerimonial.objects.filter(
+        lista=lista,
+        id=convidado_id,
+    ).first()
+    if not convidado:
+        return Response(
+            {"error": "Convidado não encontrado para este evento."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if convidado.entrada_confirmada:
+        return Response(
+            {
+                "aviso": "Convidado já confirmou a entrada anteriormente.",
+                "nome": convidado.nome,
+                "entrada_em": convidado.entrada_em,
+            }
+        )
+
+    convidado.entrada_confirmada = True
+    convidado.entrada_em = referencia
+    convidado.save(update_fields=["entrada_confirmada", "entrada_em"])
+
+    cpf = convidado.cpf or ""
+    cpf_mascarado = f"{cpf[:3]}*****{cpf[-3:]}" if len(cpf) == 11 else cpf
+
+    return Response(
+        {
+            "success": True,
+            "message": "Entrada confirmada com sucesso.",
+            "nome": convidado.nome,
+            "cpf_mascarado": cpf_mascarado,
+            "entrada_em": convidado.entrada_em,
+        }
+    )
+
+
 __all__ = [
     "recepcao_eventos_painel_view",
     "recepcao_evento_checkin_view",
     "recepcao_evento_checkout_view",
     "recepcao_evento_convidados_view",
     "recepcao_evento_confirmar_por_nome_view",
+    "recepcao_evento_confirmar_convidado_view",
 ]

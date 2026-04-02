@@ -411,6 +411,11 @@ urlpatterns = [
         views.recepcao_evento_confirmar_por_nome_view,
         name="evento-cerimonial-recepcao-confirmar-por-nome",
     ),
+    path(
+        "eventos-cerimonial/<int:pk>/recepcao/confirmar-convidado/",
+        views.recepcao_evento_confirmar_convidado_view,
+        name="evento-cerimonial-recepcao-confirmar-convidado",
+    ),
     # URLs para Listas de Convidados
     path(
         "listas-convidados/confirmar-por-qrcode/",

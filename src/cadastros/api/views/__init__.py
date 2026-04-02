@@ -115,6 +115,7 @@ from .ocorrencia_views import (
 )
 from .recepcao_evento_views import (
     recepcao_evento_checkin_view,
+    recepcao_evento_confirmar_convidado_view,
     recepcao_evento_checkout_view,
     recepcao_evento_confirmar_por_nome_view,
     recepcao_evento_convidados_view,
@@ -253,4 +254,5 @@ __all__ = [
     "recepcao_evento_checkout_view",
     "recepcao_evento_convidados_view",
     "recepcao_evento_confirmar_por_nome_view",
+    "recepcao_evento_confirmar_convidado_view",
 ]
